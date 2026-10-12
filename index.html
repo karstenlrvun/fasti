@@ -394,7 +394,7 @@ body.dragging,body.dragging *{ cursor:grabbing !important; user-select:none; -we
 <script src="core.js"></script>
 <script>
 'use strict';
-const BUILD = '2026.10.12.3';
+const BUILD = '2026.10.12.5';
 const C = FastiCore;
 // On this Mac the app is served from localhost. A few switches for testing exist only there.
 const DEV = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
@@ -608,10 +608,10 @@ const Shell = (() => {
         if (window.caches) caches.keys().then(ks => ks.filter(k => k.startsWith('fasti-')).forEach(k => caches.delete(k))).catch(() => {});
         return;
       }
-      const had = !!navigator.serviceWorker.controller;      // false on the very first visit: taking control then is not an update
+      let had = !!navigator.serviceWorker.controller;        // false on the very first visit: taking control then is not an update
       navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' }).then(r => { reg = r; }).catch(() => {});
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!had) return;
+        if (!had) { had = true; return; }                     // ...but whatever takes over after that is
         // Reload by itself only if nothing is being typed.
         if (isEditing()) { App.updateReady = true; emit(); } else location.reload();
       });
