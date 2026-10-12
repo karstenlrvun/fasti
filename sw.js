@@ -6,7 +6,7 @@
 
    BUILD must match the one in index.html (tests/tests.js checks). Changing it
    is what tells a device that a new version exists. */
-const BUILD = '2026.10.12.2';
+const BUILD = '2026.10.12.3';
 const CACHE = 'fasti-' + BUILD;
 // The whole app. Everything else on this address is left to the network.
 const SHELL = ['index.html', 'core.js', 'manifest.webmanifest', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];

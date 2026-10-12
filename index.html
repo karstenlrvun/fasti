@@ -394,7 +394,7 @@ body.dragging,body.dragging *{ cursor:grabbing !important; user-select:none; -we
 <script src="core.js"></script>
 <script>
 'use strict';
-const BUILD = '2026.10.12.2';
+const BUILD = '2026.10.12.3';
 const C = FastiCore;
 // On this Mac the app is served from localhost. A few switches for testing exist only there.
 const DEV = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
@@ -919,7 +919,7 @@ function macWeek(){
     + (d.today ? '<div class="nowline" style="top:calc(var(--hh)*' + (n.min / 60).toFixed(4) + ')"></div>' : '') + '</div>';
   h += '</div></div></div>';
   return h + '<aside class="wside narrow" id="wside" data-scroll="side"><div class="colhead"><span>To schedule</span><span>' + w.toSchedule.length + '</span></div>'
-    + taskPanel(w.toSchedule, { day: true, drag: true }, w.current ? 'Every task planned for this week has its time.' : 'No tasks planned for this week without a time.')
+    + taskPanel(w.toSchedule, { day: true, drag: true }, 'Nothing waiting for a time this week.')
     + '<div class="colhead" style="margin-top:16px"><span>Undated</span><span>' + w.undated.length + '</span></div>' + taskPanel(w.undated, { drag: true }, 'Nothing here.')
     + '<p class="hint">Drag a task onto the grid to block time for it. Drag a block back here to take its time off.</p></aside></div>';
 }
