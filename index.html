@@ -1,0 +1,1589 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Fasti">
+<meta name="theme-color" content="#e6e0f0">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Fasti</title>
+<style>
+/* ---------- the three looks: Glass (default), Steel, Slate. Tokens from demo/design-choices.html ---------- */
+.th-glass{ --bg:linear-gradient(155deg,#d9e3f1 0%,#e6e0f0 52%,#d8e9ec 100%); --chrome:rgba(255,255,255,.56); --panel:rgba(255,255,255,.95); --panel-2:rgba(255,255,255,.66); --sheet:#f1f0f7;
+  --fg:#1a2030; --muted:#566073; --faint:#8a92a2; --line:rgba(26,32,48,.10); --accent:#2d5bd0; --on-accent:#ffffff; --accent-soft:rgba(45,91,208,.11);
+  --soon:#b04f00; --danger:#c42b2b; --blur:blur(22px) saturate(1.5); --tab-on:rgba(255,255,255,.95);
+  --a-lec:#3d68d6; --a-lang:#13897b; --a-tut:#b0721a; --a-read:#7353c7; --a-choir:#c0446f; --a-pers:#5f7f4f; }
+.th-steel{ --bg:repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 1px,rgba(0,0,0,0) 1px 3px),linear-gradient(180deg,#d6dbe1,#c2c8d0);
+  --chrome:linear-gradient(180deg,#eef1f4,#dce1e7); --panel:#f5f7f9; --panel-2:#e8ecf0; --sheet:#e9edf1;
+  --fg:#191d23; --muted:#525d6c; --faint:#87909d; --line:rgba(20,26,34,.13); --accent:#3a5f88; --on-accent:#ffffff; --accent-soft:rgba(58,95,136,.12);
+  --soon:#9c5300; --danger:#b3261e; --blur:none; --tab-on:#ffffff;
+  --a-lec:#3b62b8; --a-lang:#16806f; --a-tut:#a26a12; --a-read:#6a4fb8; --a-choir:#b33d66; --a-pers:#587548; }
+.th-slate{ --bg:linear-gradient(160deg,#2b3441,#323d4c); --chrome:rgba(60,71,88,.80); --panel:#3a4555; --panel-2:#333e4d; --sheet:#2f3947;
+  --fg:#e9eef5; --muted:#b0bac8; --faint:#8a95a6; --line:rgba(233,238,245,.11); --accent:#93b2ff; --on-accent:#121722; --accent-soft:rgba(147,178,255,.15);
+  --soon:#f2a74b; --danger:#ff7d74; --blur:blur(22px); --tab-on:#4a5668; color-scheme:dark;
+  --a-lec:#8aaaff; --a-lang:#62d1c0; --a-tut:#eab75c; --a-read:#b6a0ff; --a-choir:#f38db2; --a-pers:#a9cb91; }
+/* three text sizes; the details line follows */
+.sz-compact{ --row:15px; --meta:12px; --rowh:44px; }
+.sz-standard{ --row:16px; --meta:13px; --rowh:44px; }
+.sz-roomy{ --row:17px; --meta:13.5px; --rowh:48px; }
+
+*{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{ margin:0; min-height:100vh; color:var(--fg); background:var(--bg) fixed; -webkit-font-smoothing:antialiased;
+  font:var(--row)/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif; --head:"Bodoni 72","Bodoni Moda",Didot,serif; }
+button,input,select,textarea{ font:inherit; color:inherit; }
+button{ cursor:pointer; -webkit-tap-highlight-color:transparent; }
+/* !important because most buttons start from "all:unset", which would otherwise take the outline away with everything else */
+:focus-visible{ outline:3px solid var(--accent) !important; outline-offset:2px !important; border-radius:6px; }
+[hidden]{ display:none !important; }
+.tn,.timecol,.wsub,.htot{ font-variant-numeric:tabular-nums; }
+#app{ max-width:560px; margin:0 auto; }
+
+/* ---------- the top of a page ---------- */
+#head{ position:sticky; top:0; z-index:5; padding:calc(6px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right)) 8px calc(18px + env(safe-area-inset-left));
+  background:var(--chrome); -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur); border-bottom:1px solid var(--line); }
+.titlerow{ display:flex; align-items:center; gap:6px; }
+.ptitle{ font-family:var(--head); font-size:31px; line-height:1.05; font-weight:400; flex:1; min-width:0; overflow-wrap:anywhere; margin:0; }
+.psub{ color:var(--muted); font-size:var(--meta); margin-top:2px; }
+.icon{ all:unset; box-sizing:border-box; cursor:pointer; width:44px; height:44px; display:grid; place-items:center; border-radius:10px; color:var(--muted); flex-shrink:0; }
+.icon svg{ width:24px; height:24px; }
+.icon:disabled{ opacity:.3; cursor:default; }
+.controls{ display:flex; gap:8px; align-items:center; margin-top:8px; }
+.seg{ display:inline-flex; gap:2px; padding:2px; border-radius:10px; background:var(--line); flex-shrink:0; }
+.seg button{ all:unset; box-sizing:border-box; cursor:pointer; min-height:44px; padding:0 14px; display:grid; place-items:center; border-radius:8px; color:var(--muted); font-size:var(--meta); font-weight:500; }
+.seg button[aria-pressed="true"]{ background:var(--tab-on); color:var(--fg); box-shadow:0 1px 2px rgba(0,0,0,.08); }
+.search{ flex:1; min-width:0; min-height:44px; font-size:16px; padding:0 12px; border-radius:10px; border:1px solid transparent; background:var(--line); color:var(--fg); -webkit-appearance:none; appearance:none; }
+.search::placeholder{ color:var(--faint); }
+
+/* ---------- the body of a page ---------- */
+#body{ padding:6px calc(12px + env(safe-area-inset-right)) calc(170px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left)); }
+.panel{ background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+.weekhead{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:20px 6px 4px; border-bottom:1px solid var(--line); margin-bottom:2px; }
+.weekhead b{ font-size:calc(var(--row) + 3px); font-weight:650; display:block; }
+.wsub{ font-size:var(--meta); color:var(--muted); display:block; margin-top:1px; }
+.dayhead{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:14px 6px 6px; font-weight:600; font-size:var(--meta); }
+.dayhead .hsub{ font-weight:400; color:var(--muted); margin-left:6px; }
+.dayhead .htot{ font-weight:500; color:var(--muted); text-align:right; }
+.dayhead.is-empty{ padding-bottom:2px; }
+.dayhead.is-empty .htot{ color:var(--faint); font-weight:400; }
+.dayhead .motto{ font-style:italic; color:var(--accent); }
+.fold{ all:unset; box-sizing:border-box; cursor:pointer; display:flex; justify-content:space-between; align-items:center; width:100%; min-height:44px; padding:8px 6px 4px; font-weight:600; font-size:var(--meta); }
+.fold .hsub{ font-weight:400; color:var(--muted); margin-left:6px; }
+/* a row: two lines on the phone. The title wraps; nothing is ever cut. */
+.r2{ display:grid; grid-template-columns:auto minmax(0,1fr) auto; column-gap:10px; align-items:start; min-height:var(--rowh); padding:9px 12px; border-bottom:1px solid var(--line); cursor:pointer; }
+.r2:last-child{ border-bottom:0; }
+.r2 .lead{ grid-row:1 / span 2; }
+.r2 .ttl{ grid-column:2; overflow-wrap:anywhere; padding-top:2px; }
+.r2 .sub{ grid-column:2; display:flex; flex-wrap:wrap; gap:1px 9px; margin-top:2px; font-size:var(--meta); color:var(--muted); }
+.r2 .trail{ grid-column:3; grid-row:1 / span 2; align-self:center; }
+.r2.is-done .ttl{ text-decoration:line-through; color:var(--faint); }
+.r2.is-past{ opacity:.5; }
+.timecol{ width:42px; font-size:var(--meta); line-height:1.4; padding-top:3px; }
+.timecol small{ display:block; font-size:inherit; color:var(--faint); }
+/* the tick circle: small to look at, 44 points to touch */
+.tick{ all:unset; box-sizing:border-box; cursor:pointer; width:44px; height:44px; margin:-10px -13px -10px -13px; display:grid; place-items:center; border-radius:50%; }
+.tick i{ width:20px; height:20px; border-radius:50%; border:1.7px solid var(--faint); display:block; position:relative; }
+.tick.on i{ background:var(--accent); border-color:var(--accent); }
+.tick.on i::after{ content:""; position:absolute; left:5.6px; top:2px; width:5px; height:9.5px; border:solid var(--on-accent); border-width:0 2px 2px 0; transform:rotate(45deg); }
+.dot{ width:8px; height:8px; border-radius:50%; display:inline-block; flex-shrink:0; }
+.imp{ color:var(--soon); margin-right:6px; font-size:.8em; vertical-align:1px; }
+.u-far,.u-near{ color:var(--muted); }
+.u-soon{ color:var(--soon); font-weight:600; }
+.u-past{ color:var(--danger); font-weight:600; }
+.clash{ color:var(--soon); font-weight:600; }
+.faint{ color:var(--faint); }
+.free{ display:flex; align-items:center; gap:10px; padding:4px 12px; font-size:calc(var(--meta) - .5px); color:var(--faint); border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
+.free::before,.free::after{ content:""; flex:1; height:1px; background:var(--line); }
+.more{ padding:8px 12px; color:var(--muted); font-size:var(--meta); }
+.empty{ padding:12px; color:var(--faint); font-size:var(--meta); }
+.pendwrap{ margin:10px 0 2px; }
+.pending{ all:unset; box-sizing:border-box; cursor:pointer; display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:0 16px; border-radius:999px;
+  background:color-mix(in srgb, var(--danger) 12%, var(--panel)); color:var(--danger); font-weight:600; font-size:var(--meta); }
+.pending i{ width:7px; height:7px; border-radius:50%; background:var(--danger); display:block; }
+.acts{ display:flex; flex-wrap:wrap; gap:8px; padding:0 12px 10px 12px; border-bottom:1px solid var(--line); }
+.acts:last-child{ border-bottom:0; }
+.banner{ margin:12px 0 2px; padding:6px 6px 6px 12px; border-radius:10px; background:var(--accent-soft); font-size:var(--meta); display:flex; justify-content:space-between; gap:8px; align-items:center; }
+.banner.bad{ background:color-mix(in srgb, var(--danger) 10%, var(--panel)); color:var(--danger); padding:10px 12px; }
+.banner span{ overflow-wrap:anywhere; }
+.sbtn{ all:unset; box-sizing:border-box; cursor:pointer; min-height:44px; padding:0 14px; display:inline-grid; place-items:center; border-radius:9px; background:var(--accent-soft); color:var(--accent); font-weight:600; font-size:var(--meta); white-space:nowrap; }
+.sbtn.ghost{ background:transparent; color:var(--muted); border:1px solid var(--line); }
+.sbtn.danger{ background:transparent; color:var(--danger); border:1px solid color-mix(in srgb, var(--danger) 35%, transparent); }
+.ring{ display:flex; align-items:center; gap:8px; font-size:var(--meta); color:var(--muted); flex-shrink:0; text-align:right; }
+.ring svg{ width:38px; height:38px; flex-shrink:0; }
+.ring .bg{ fill:none; stroke:var(--line); stroke-width:5; }
+.ring .fg{ fill:none; stroke:var(--accent); stroke-width:5; stroke-linecap:round; }
+.ring b{ display:block; color:var(--fg); font-weight:650; }
+.status{ all:unset; box-sizing:border-box; cursor:pointer; display:block; width:100%; min-height:44px; text-align:center; color:var(--faint); font-size:var(--meta); padding:18px 6px 4px; }
+
+/* ---------- Term ---------- */
+.pgrid{ display:grid; grid-template-columns:44px repeat(7,minmax(0,1fr)); gap:3px; margin-top:8px; }
+.pgrid .h{ text-align:center; font-size:11px; color:var(--faint); font-weight:600; padding-bottom:2px; }
+.pgrid .w{ all:unset; box-sizing:border-box; cursor:pointer; min-height:52px; display:grid; place-items:center; font-size:12px; font-weight:700; color:var(--accent); text-decoration:underline; text-underline-offset:3px; border-radius:7px; }
+.pgrid .w.on{ background:var(--accent-soft); }
+.pc{ all:unset; box-sizing:border-box; cursor:pointer; height:52px; min-width:0; border-radius:7px; position:relative; overflow:hidden; padding:4px 5px; font-size:12px; font-weight:600; color:var(--muted);
+  display:flex; align-items:flex-start; background:color-mix(in srgb, var(--accent) var(--tint,0%), var(--panel)); border:1px solid var(--line); }
+.pc.today{ color:var(--accent); box-shadow:inset 0 0 0 1.5px var(--accent); }
+.pc.sel{ box-shadow:inset 0 0 0 2.5px var(--accent); }
+.pc.inwk{ border-color:var(--accent); }
+.pc.past{ opacity:.55; }
+.pc .due{ position:absolute; top:0; right:0; width:0; height:0; border-top:12px solid var(--dc); border-left:12px solid transparent; }
+.pc .dots{ position:absolute; left:5px; bottom:5px; display:flex; gap:3px; }
+.pc .dots i{ width:5px; height:5px; border-radius:50%; display:block; }
+.legend{ display:flex; flex-wrap:wrap; align-items:center; gap:4px 14px; margin:8px 2px 0; font-size:11.5px; color:var(--muted); }
+.legend span{ display:inline-flex; align-items:center; gap:5px; }
+.legend i{ display:block; }
+.legend i.c{ width:0; height:0; border-top:9px solid var(--a-tut); border-left:9px solid transparent; }
+.legend i.d{ width:6px; height:6px; border-radius:50%; background:var(--muted); }
+.legend i.s{ width:13px; height:9px; border-radius:2px; background:color-mix(in srgb, var(--accent) 22%, var(--panel)); border:1px solid var(--line); }
+
+/* ---------- the bottom bar and the add button ---------- */
+#tabs{ position:fixed; left:0; right:0; bottom:0; z-index:5; display:flex; justify-content:space-around; padding:6px 0 calc(6px + env(safe-area-inset-bottom));
+  background:var(--chrome); -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur); border-top:1px solid var(--line); }
+#tabs button{ all:unset; box-sizing:border-box; cursor:pointer; min-width:96px; min-height:48px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-size:10.5px; font-weight:500; color:var(--muted); border-radius:10px; }
+#tabs button[aria-current="page"]{ color:var(--accent); }
+#tabs svg{ width:24px; height:24px; }
+#fab{ all:unset; box-sizing:border-box; cursor:pointer; position:fixed; right:calc(18px + env(safe-area-inset-right)); bottom:calc(76px + env(safe-area-inset-bottom)); z-index:6; width:56px; height:56px; border-radius:50%;
+  background:var(--accent); color:var(--on-accent); display:grid; place-items:center; font-size:32px; line-height:1; box-shadow:0 8px 18px -8px rgba(0,0,0,.45); }
+@media (min-width:560px){ #fab{ right:calc(50% - 262px); } }
+
+/* ---------- sheets: the add bar, the editors, Settings ---------- */
+.scrim{ position:fixed; inset:0; z-index:20; background:rgba(10,14,22,.38); }
+.sheet{ position:fixed; z-index:21; left:0; right:0; margin:0 auto; max-width:560px; background:var(--sheet); color:var(--fg); box-shadow:0 12px 40px -12px rgba(0,0,0,.5); }
+.sheet.top{ top:0; border-radius:0 0 18px 18px; padding:calc(10px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) 12px calc(14px + env(safe-area-inset-left)); max-height:100%; overflow:auto; }
+.sheet.full{ top:calc(10px + env(safe-area-inset-top)); bottom:0; border-radius:18px 18px 0 0; display:flex; flex-direction:column; }
+.sheethead{ display:flex; align-items:center; gap:8px; padding:6px 8px 6px 16px; border-bottom:1px solid var(--line); flex-shrink:0; }
+.sheethead h2{ flex:1; min-width:0; margin:0; font-size:calc(var(--row) + 1px); font-weight:650; overflow-wrap:anywhere; }
+.sheetbody{ flex:1; overflow:auto; -webkit-overflow-scrolling:touch; padding:8px calc(14px + env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left)); }
+.f{ display:block; margin-top:12px; }
+.f > span,.flabel{ display:block; font-size:var(--meta); font-weight:600; color:var(--muted); margin:0 2px 4px; }
+.f small{ display:block; font-size:var(--meta); color:var(--muted); margin:4px 2px 0; }
+.f input[type=text],.f input[type=date],.f input[type=time],.f input[type=number],.f select,.f textarea,.field{
+  display:block; width:100%; min-height:44px; font-size:16px; padding:9px 12px; border-radius:10px; border:1px solid var(--line); background:var(--panel); color:var(--fg); -webkit-appearance:none; appearance:none; }
+.f textarea{ min-height:88px; resize:vertical; line-height:1.4; }
+.pair{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; }
+.check{ display:flex; align-items:center; gap:10px; min-height:44px; margin-top:8px; font-size:var(--row); }
+.check input{ width:22px; height:22px; accent-color:var(--accent); flex-shrink:0; margin:0; }
+.check small{ display:block; font-size:var(--meta); color:var(--muted); }
+.btnrow{ display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.btn{ all:unset; box-sizing:border-box; cursor:pointer; min-height:46px; padding:0 18px; display:inline-grid; place-items:center; border-radius:11px; border:1px solid var(--line); background:var(--panel); color:var(--fg); font-weight:600; font-size:var(--row); text-align:center; }
+.btn.go{ background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
+.btn.danger{ color:var(--danger); }
+.btn.wide{ flex:1 1 100%; }
+.error{ color:var(--danger); font-weight:600; font-size:var(--meta); margin:10px 2px 0; }
+.sec{ font-size:var(--meta); font-weight:600; color:var(--muted); letter-spacing:.04em; text-transform:uppercase; margin:22px 4px 6px; }
+.note{ font-size:var(--meta); color:var(--muted); margin:6px 2px 0; }
+.dayset{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; }
+.dayset label{ display:grid; place-items:center; min-height:44px; border-radius:9px; border:1px solid var(--line); background:var(--panel); font-size:var(--meta); font-weight:600; cursor:pointer; }
+.dayset input{ position:absolute; opacity:0; pointer-events:none; }
+.dayset label:has(input:checked){ background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
+.dayset label:has(input:focus-visible){ outline:3px solid var(--accent); outline-offset:2px; }
+.arearow{ display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:6px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); }
+.arearow:last-child{ border-bottom:0; }
+.arearow .sw{ display:flex; gap:4px; grid-column:1 / -1; flex-wrap:wrap; }
+.swatch{ all:unset; box-sizing:border-box; cursor:pointer; width:44px; height:44px; border-radius:9px; border:2px solid transparent; display:grid; place-items:center; }
+.swatch i{ width:20px; height:20px; border-radius:50%; display:block; }
+.swatch[aria-pressed="true"]{ border-color:var(--fg); }
+/* the add bar */
+.addrow{ display:flex; gap:8px; }
+.addrow input{ flex:1; min-width:0; min-height:48px; font-size:17px; padding:0 14px; border-radius:11px; border:1px solid var(--line); background:var(--panel); color:var(--fg); -webkit-appearance:none; appearance:none; }
+/* each marked word is small to look at and 44 points to touch: the lines are spaced to make room */
+.echo{ margin-top:4px; font-size:var(--row); color:var(--muted); line-height:44px; overflow-wrap:anywhere; }
+.echo mark{ background:none; color:var(--fg); border-radius:5px; padding:3px 4px; cursor:pointer; position:relative; }
+.echo mark::after{ content:""; position:absolute; left:-2px; right:-2px; top:-10px; bottom:-10px; }
+.echo .k-day,.echo .k-date{ background:color-mix(in srgb, var(--a-lec) 18%, transparent); }
+.echo .k-wk,.echo .k-term{ background:color-mix(in srgb, var(--a-tut) 22%, transparent); }
+.echo .k-time{ background:color-mix(in srgb, var(--a-lang) 20%, transparent); }
+.echo .k-due,.echo .k-imp{ background:color-mix(in srgb, var(--danger) 16%, transparent); }
+.echo .k-est,.echo .k-place,.echo .k-area{ background:color-mix(in srgb, var(--a-read) 18%, transparent); }
+.pchips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.pchip{ background:var(--panel); border:1px solid var(--line); border-radius:9px; padding:6px 10px; font-size:var(--meta); overflow-wrap:anywhere; min-width:0; }
+.pchip small{ display:block; font-size:10.5px; color:var(--faint); text-transform:uppercase; letter-spacing:.06em; }
+.pchip b{ font-weight:600; }
+.will{ margin-top:10px; font-size:var(--row); overflow-wrap:anywhere; }
+.hint{ margin-top:8px; font-size:var(--meta); color:var(--faint); }
+/* the line that appears for a few seconds after deleting or letting go */
+#toast{ position:fixed; left:12px; right:12px; bottom:calc(140px + env(safe-area-inset-bottom)); z-index:30; margin:0 auto; max-width:420px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:6px 6px 6px 16px; border-radius:14px; background:var(--fg); color:var(--sheet); font-size:var(--meta); font-weight:600; box-shadow:0 10px 28px -10px rgba(0,0,0,.55); }
+#toast span{ overflow-wrap:anywhere; padding:8px 0; }
+#toast button{ all:unset; box-sizing:border-box; cursor:pointer; min-height:44px; padding:0 14px; display:grid; place-items:center; border-radius:10px; color:inherit; text-decoration:underline; text-underline-offset:3px; white-space:nowrap; }
+@media (prefers-reduced-motion: no-preference){ .sheet.top{ animation:drop .16s ease-out; } .sheet.full{ animation:rise .18s ease-out; } }
+@keyframes drop{ from{ transform:translateY(-14px); opacity:0; } }
+@keyframes rise{ from{ transform:translateY(22px); opacity:0; } }
+/* a short question in the middle of the screen: "this one, or all later ones?" */
+.sheet.ask{ top:26%; max-width:460px; border-radius:16px; padding:18px 18px 16px; }
+.sheet.ask p{ margin:0 0 6px; overflow-wrap:anywhere; }
+/* the row or box the J and K keys have moved to */
+.cur{ box-shadow:inset 0 0 0 2px var(--accent); }
+.blk.cur,.chip.cur{ box-shadow:0 0 0 2px var(--accent); }
+
+/* ================= the Mac layout: any window 700 px wide or more (body.mac is set by the page) ================= */
+.mac.sz-compact{ --row:14px; --meta:12px; --rowh:28px; }
+.mac.sz-standard{ --row:15px; --meta:13px; --rowh:32px; }
+.mac.sz-roomy{ --row:16px; --meta:13.5px; --rowh:36px; }
+body.mac{ height:100vh; overflow:hidden; }
+.mac #app{ max-width:none; height:100vh; display:flex; flex-direction:column; }
+.mac #tabs,.mac #fab{ display:none; }
+/* the bar across the top: the three pages, search, sync, Add */
+.mac #head{ position:static; flex-shrink:0; height:52px; display:flex; align-items:center; gap:12px; padding:0 12px 0 16px; font-size:var(--meta); }
+.mtabs{ display:flex; gap:2px; padding:2px; border-radius:9px; background:var(--line); }
+.mtabs button{ all:unset; box-sizing:border-box; cursor:pointer; padding:5px 15px; border-radius:7px; color:var(--muted); font-weight:500; }
+.mtabs button[aria-current="page"]{ background:var(--tab-on); color:var(--fg); box-shadow:0 1px 2px rgba(0,0,0,.10); }
+.sp{ flex:1; }
+.mac .search{ flex:0 1 230px; min-height:30px; padding:0 10px; border-radius:8px; font-size:var(--meta); }
+.msync{ all:unset; box-sizing:border-box; cursor:pointer; display:flex; align-items:center; gap:6px; color:var(--muted); white-space:nowrap; padding:6px 4px; border-radius:7px; }
+.msync i{ width:7px; height:7px; border-radius:50%; background:var(--faint); display:block; }
+.msync.ok i{ background:#34a36b; }
+.addbtn{ all:unset; box-sizing:border-box; cursor:pointer; background:var(--accent); color:var(--on-accent); padding:6px 12px; border-radius:8px; font-weight:600; white-space:nowrap; }
+.addbtn kbd{ font:inherit; font-size:11px; margin-left:7px; padding:0 5px; border-radius:4px; border:1px solid currentColor; opacity:.75; }
+.mac .icon{ width:34px; height:34px; border-radius:8px; }
+.mac .icon svg{ width:20px; height:20px; }
+.mac #body{ flex:1; min-height:0; padding:0; display:flex; flex-direction:column; }
+.mnotes{ flex-shrink:0; padding:0 16px 4px; }
+.mpage{ flex:1; min-height:0; }
+.listhead{ display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap; padding:14px 22px 10px; flex-shrink:0; }
+.h1{ font-family:var(--head); font-size:34px; line-height:1; font-weight:400; margin:0; }
+.h1sub{ color:var(--muted); font-size:var(--meta); margin-top:4px; }
+.colhead{ font-size:var(--meta); font-weight:600; color:var(--muted); letter-spacing:.04em; text-transform:uppercase; margin:6px 4px 8px; display:flex; justify-content:space-between; }
+.navrow{ display:flex; align-items:center; gap:4px; }
+/* a row on the Mac: one line when the title fits; a long title wraps and is never cut */
+.mac .r2{ display:flex; align-items:baseline; gap:10px; min-height:0; padding:6px 12px; }
+.mac .r2 .lead{ flex-shrink:0; }
+.mac .r2 .lead:not(.timecol),.mac .r2 .trail{ align-self:center; }
+.mac .r2 .ttl{ flex:1 1 0; min-width:45%; padding-top:0; }
+.mac .r2 .sub{ flex:0 1 auto; max-width:58%; margin-top:0; justify-content:flex-end; text-align:right; }
+.mac .r2 .trail{ display:flex; flex-shrink:0; }
+.mac .r2 .est{ width:54px; flex-shrink:0; text-align:right; font-size:var(--meta); color:var(--muted); font-variant-numeric:tabular-nums; }
+.mac .timecol{ width:92px; padding-top:0; line-height:inherit; }
+.mac .tick{ width:26px; height:26px; margin:-5px -4px; }
+.mac .tick i{ width:17px; height:17px; border-width:1.6px; }
+.mac .tick.on i::after{ left:4.6px; top:1.4px; width:4px; height:8px; border-width:0 1.8px 1.8px 0; }
+/* in the two narrow columns (Undated and Someday; To schedule) there is no room for one line: the details go under the title */
+.mac .narrow .r2{ display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; column-gap:8px; align-items:center; }
+.mac .narrow .r2 .lead,.mac .narrow .r2 .trail,.mac .narrow .r2 .est{ grid-row:1 / span 2; }
+.mac .narrow .r2 .ttl{ grid-column:2; min-width:0; }
+.mac .narrow .r2 .sub{ grid-column:2; grid-row:2; max-width:none; justify-content:flex-start; text-align:left; margin-top:1px; }
+.mac .narrow .r2 .trail{ grid-column:3; }
+.mac .narrow .r2 .est{ grid-column:4; width:auto; min-width:30px; }
+.mac .weekhead{ padding-top:18px; }
+.mac .pending{ min-height:30px; }
+.dayhead.picked > span:first-child{ color:var(--accent); }
+.dayhead .sbtn{ margin-left:10px; }
+/* Everything on the Mac: Undated and Someday on the left, the list beside them */
+.mevery{ display:grid; grid-template-columns:292px minmax(0,1fr); height:100%; }
+.mleft{ padding:16px 14px; overflow:auto; border-right:1px solid var(--line); }
+.mmid{ display:flex; flex-direction:column; min-width:0; min-height:0; }
+.mmid .listhead,.mlistin{ max-width:904px; }
+.mlist{ flex:1; min-height:0; overflow:auto; }
+.mlistin{ padding:0 22px 40px; }
+/* Term on the Mac: a full page, each day saying what is on */
+.mterm{ height:100%; overflow:auto; display:flex; flex-direction:column; padding:0 18px 18px; }
+.mterm .listhead{ padding:14px 4px 12px; }
+.tgrid{ flex:1; display:grid; gap:4px; grid-template-columns:96px repeat(7,minmax(0,1fr)); }
+.th{ text-align:center; color:var(--muted); font-size:var(--meta); font-weight:600; align-self:end; padding-bottom:2px; }
+.tw{ all:unset; box-sizing:border-box; cursor:pointer; display:flex; flex-direction:column; justify-content:center; padding-right:8px; text-align:right; border-radius:8px; }
+.tw b{ font-size:var(--row); font-weight:650; }
+.tw span{ font-size:10.5px; color:var(--faint); }
+.tc{ all:unset; box-sizing:border-box; cursor:pointer; display:block; min-width:0; border-radius:8px; padding:4px 7px 9px; position:relative;
+  background:color-mix(in srgb, var(--accent) var(--tint,0%), var(--panel)); border:1px solid var(--line); }
+.tc.today{ box-shadow:inset 0 0 0 2px var(--accent); }
+.tc.past{ opacity:.55; }
+.cday{ display:block; font-size:var(--meta); line-height:1.2; font-weight:600; color:var(--muted); font-variant-numeric:tabular-nums; }
+.tc.today .cday{ color:var(--accent); }
+.citem{ display:block; font-size:calc(var(--meta) - 1px); line-height:1.25; overflow-wrap:anywhere; }
+.citem.is-done{ text-decoration:line-through; color:var(--faint); }
+.citem.more{ color:var(--faint); }
+/* the same corner as on the phone's grid: it marks a deadline, so colour is not the only sign */
+.dmark{ display:inline-block; width:0; height:0; border-top:7px solid var(--a-tut); border-left:7px solid transparent; margin-right:4px; vertical-align:1px; }
+.u-soon .dmark{ border-top-color:var(--soon); }
+.u-past .dmark{ border-top-color:var(--danger); }
+.is-done .dmark{ border-top-color:var(--faint); }
+.cload{ position:absolute; left:7px; right:7px; bottom:3px; height:3px; border-radius:2px; background:var(--line); display:block; }
+.cload i{ display:block; height:100%; border-radius:2px; background:var(--accent); }
+#tip{ position:fixed; z-index:35; pointer-events:none; width:max-content; max-width:340px; padding:9px 12px; border-radius:10px; background:var(--sheet); color:var(--fg); border:1px solid var(--line);
+  box-shadow:0 12px 30px -12px rgba(0,0,0,.45); font-size:var(--meta); }
+#tip b{ display:block; margin-bottom:4px; }
+.tipline{ display:grid; grid-template-columns:auto minmax(0,1fr); column-gap:10px; line-height:1.45; }
+.tipline > span:first-child{ color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.tipline > span:last-child{ overflow-wrap:anywhere; }
+.tipline.is-done > span:last-child{ text-decoration:line-through; color:var(--faint); }
+/* Week on the Mac: seven columns of hours, with the tasks still to schedule beside them */
+.mweek{ display:grid; grid-template-columns:minmax(0,1fr) 300px; height:100%; }
+.wmain{ display:flex; flex-direction:column; min-width:0; min-height:0; }
+.wmain .listhead{ padding:12px 18px 8px; }
+.wscroll{ flex:1; min-height:0; overflow:auto; position:relative; --hh:58px; }
+.wtop{ position:sticky; top:0; z-index:4; background:var(--chrome); -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur); border-bottom:1px solid var(--line); }
+.wrow{ display:grid; grid-template-columns:56px repeat(7,minmax(0,1fr)); border-top:1px solid var(--line); }
+.wdh{ text-align:center; padding:6px 4px 5px; font-size:var(--meta); color:var(--muted); border-left:1px solid var(--line); }
+.wdh b{ display:block; font-size:calc(var(--row) + 4px); color:var(--fg); font-weight:600; line-height:1.15; font-variant-numeric:tabular-nums; }
+.wdh.today,.wdh.today b{ color:var(--accent); }
+.wlab{ font-size:10.5px; color:var(--faint); display:flex; align-items:center; justify-content:flex-end; padding-right:6px; text-transform:uppercase; letter-spacing:.04em; }
+.wcell{ border-left:1px solid var(--line); padding:3px; min-height:26px; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.chip{ all:unset; box-sizing:border-box; cursor:pointer; display:block; font-size:calc(var(--meta) - .5px); line-height:1.25; padding:2px 6px; border-radius:5px; overflow-wrap:anywhere; background:var(--panel); border:1px solid var(--line); }
+.chip.allday{ background:var(--accent-soft); border-color:transparent; }
+.chip.is-done{ text-decoration:line-through; color:var(--faint); }
+.wbody{ display:grid; grid-template-columns:56px repeat(7,minmax(0,1fr)); height:calc(var(--hh) * 24); position:relative; }
+.gut{ position:relative; }
+.gut span{ position:absolute; right:7px; transform:translateY(-50%); font-size:10.5px; color:var(--faint); font-variant-numeric:tabular-nums; }
+.dcol{ position:relative; border-left:1px solid var(--line); cursor:cell;
+  background-image:repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--hh) - 1px), var(--line) calc(var(--hh) - 1px), var(--line) var(--hh)); }
+.dcol.today{ background-color:color-mix(in srgb, var(--accent) 5%, transparent); }
+/* a box on the grid. Its height is its length, so this is the one place a title may be clipped: the whole title shows on hover and in the editor */
+.blk{ position:absolute; box-sizing:border-box; border-radius:7px; padding:3px 7px; overflow:hidden; font-size:var(--meta); line-height:1.25; cursor:grab; user-select:none; -webkit-user-select:none; touch-action:none;
+  background:color-mix(in srgb, var(--ac) 17%, var(--panel)); border:1px solid color-mix(in srgb, var(--ac) 42%, transparent); }
+.blk b{ display:block; font-weight:600; overflow-wrap:anywhere; }
+.blk .when{ color:var(--muted); white-space:nowrap; }
+.blk .where{ color:var(--muted); overflow-wrap:anywhere; }
+.blk.short{ padding-top:0; padding-bottom:0; display:flex; gap:6px; white-space:nowrap; line-height:1.05; align-items:center; }
+.blk.task{ background:var(--panel); border:1.6px dashed color-mix(in srgb, var(--ac) 75%, transparent); padding-left:25px; }
+.blk.task .tick{ position:absolute; left:1px; top:-1px; margin:0; width:24px; height:24px; }
+.blk.task.short .tick{ top:50%; transform:translateY(-50%); }
+.blk.task .tick i{ width:13px; height:13px; border-width:1.5px; }
+.blk.task .tick.on i::after{ left:3.2px; top:.8px; width:3px; height:6px; border-width:0 1.6px 1.6px 0; }
+.blk.is-done b{ text-decoration:line-through; color:var(--faint); }
+.blk.is-done{ cursor:pointer; }
+.blk.past{ opacity:.5; }
+.blk.lifted{ opacity:.3; }
+.blk.ghost{ z-index:5; box-shadow:0 8px 20px -8px rgba(0,0,0,.45); pointer-events:none; }
+.grip{ position:absolute; left:0; right:0; bottom:0; height:7px; cursor:ns-resize; }
+.nowline{ position:absolute; left:-4px; right:0; height:2px; background:var(--danger); z-index:3; pointer-events:none; }
+.nowline::before{ content:""; position:absolute; left:0; top:-3px; width:8px; height:8px; border-radius:50%; background:var(--danger); }
+.wside{ border-left:1px solid var(--line); padding:14px 12px; overflow:auto; }
+.wside .r2[data-drag]{ cursor:grab; user-select:none; -webkit-user-select:none; }
+.wside.drop{ background:var(--accent-soft); }
+.dragchip{ position:fixed; z-index:40; pointer-events:none; max-width:260px; padding:6px 10px; border-radius:8px; background:var(--fg); color:var(--sheet); font-size:var(--meta); font-weight:600; overflow-wrap:anywhere; box-shadow:0 10px 24px -10px rgba(0,0,0,.5); }
+body.dragging,body.dragging *{ cursor:grabbing !important; user-select:none; -webkit-user-select:none; }
+/* a narrower Mac window: the two side columns give some of their width back, and the sync status keeps its dot and drops its words */
+@media (max-width:1100px){ .mweek{ grid-template-columns:minmax(0,1fr) 240px; } .mevery{ grid-template-columns:240px minmax(0,1fr); } }
+@media (max-width:900px){ .msync span{ display:none; } .msync{ padding:10px; } .mac .search{ min-width:90px; } .mac #head{ gap:8px; } }
+/* sheets on the Mac: the add bar across the top, and the editor and Settings as a panel on the right, so the page stays in view */
+.mac .scrim{ background:rgba(10,14,22,.10); }
+.mac .sheet.full{ left:auto; right:0; top:52px; bottom:0; width:420px; max-width:100%; margin:0; border-radius:0; border-left:1px solid var(--line); }
+.mac .sheet.top{ top:8px; max-width:720px; border-radius:14px; padding:12px 14px; }
+.mac .btn{ min-height:36px; padding:0 14px; border-radius:9px; }
+.mac .sbtn{ min-height:30px; padding:0 11px; border-radius:7px; }
+.mac .seg button{ min-height:28px; padding:0 12px; }
+.mac .f input[type=text],.mac .f input[type=date],.mac .f input[type=time],.mac .f input[type=number],.mac .f select,.mac .f textarea,.mac .field{ min-height:36px; padding:6px 10px; font-size:var(--row); border-radius:8px; }
+.mac .addrow input{ min-height:40px; font-size:calc(var(--row) + 1px); }
+.mac .echo{ line-height:30px; }
+.mac .echo mark::after{ top:-3px; bottom:-3px; }
+.mac .check{ min-height:34px; }
+.mac .check input{ width:17px; height:17px; }
+.mac .dayset label{ min-height:34px; }
+.mac .swatch{ width:32px; height:32px; }
+.mac .swatch i{ width:16px; height:16px; }
+.mac #toast{ left:auto; right:24px; bottom:24px; margin:0; }
+@media (prefers-reduced-motion: no-preference){ .mac .sheet.full{ animation:slide .16s ease-out; } }
+@keyframes slide{ from{ transform:translateX(24px); opacity:0; } }
+</style>
+</head>
+<body class="th-glass sz-standard">
+<div id="app">
+  <header id="head"></header>
+  <main id="body"></main>
+</div>
+<button id="fab" data-act="add" aria-label="Add">+</button>
+<nav id="tabs" aria-label="Pages"></nav>
+<div id="sheet"></div>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<div id="tip" role="tooltip" hidden></div>
+
+<script src="core.js"></script>
+<script>
+'use strict';
+const BUILD = '2026.10.12.2';
+const C = FastiCore;
+// On this Mac the app is served from localhost. A few switches for testing exist only there.
+const DEV = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+const KEY = { sync: 'fasti.sync.v1', ui: 'fasti.ui.v1', dev: 'fasti.dev.v1' };
+const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || 'null') || {}; } catch (e) { return {}; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const $ = id => document.getElementById(id);
+
+/* ================= 1. What only this device knows: the sync code and the device's own id =================
+   Kept apart from the state on purpose: the code never goes inside anything that is synced. */
+const Device = (() => {
+  let mem = null;
+  function get(){
+    if (!mem) { mem = lsGet(KEY.sync); if (typeof mem.installId !== 'string' || !mem.installId) { mem.installId = C.newId().slice(0, 8); lsSet(KEY.sync, mem); } }
+    return mem;
+  }
+  return { id: () => get().installId, code: () => C.normaliseSyncCode(get().syncCode) || '',
+    setCode(code){ get().syncCode = code || ''; lsSet(KEY.sync, mem); } };
+})();
+
+/* ================= 2. Saving on the device: IndexedDB database "fasti", store "kv" =================
+   Two records: "state" (everything that syncs) and "sync" (what this device remembers about syncing).
+   They live together so that if the storage is ever wiped, both go, and the device starts again from
+   "never seen the server": it will fetch and merge before it pushes anything. */
+const Store = (() => {
+  let db = null, chain = Promise.resolve();
+  const open = () => new Promise((res, rej) => {
+    let req; try { req = indexedDB.open('fasti', 1); } catch (e) { return rej(e); }
+    req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains('kv')) req.result.createObjectStore('kv'); };
+    req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); req.onblocked = () => rej(new Error('blocked'));
+  });
+  const read = () => new Promise((res, rej) => {
+    const t = db.transaction('kv', 'readonly'), s = t.objectStore('kv'), out = {};
+    s.get('state').onsuccess = e => { out.state = e.target.result; };
+    s.get('sync').onsuccess = e => { out.sync = e.target.result; };
+    t.oncomplete = () => res(out); t.onerror = t.onabort = () => rej(t.error);
+  });
+  const write = (state, sync) => new Promise((res, rej) => {
+    const t = db.transaction('kv', 'readwrite'), s = t.objectStore('kv');
+    s.put(state, 'state'); s.put(sync, 'sync');
+    t.oncomplete = () => res(); t.onerror = t.onabort = () => rej(t.error);
+  });
+  return {
+    async load(){ db = await open(); return read(); },
+    read: () => db ? read() : Promise.reject(new Error('no store')),
+    // One write at a time, in order, so the latest always lands last.
+    save(state, sync){ const p = chain.then(() => { if (!db) throw new Error('no store'); return write(state, sync); }); chain = p.catch(() => {}); return p; },
+  };
+})();
+
+/* ================= 3. The app's state, and the one way to change it ================= */
+const App = { state: null, sync: C.newSyncState(), ready: false, hold: false, notices: {}, updateReady: false, stats: { fetches: 0, pushes: 0 } };
+const listeners = [];
+const emit = () => { for (const f of listeners) { try { f(); } catch (e) { console.error(e); } } };
+const channel = ('BroadcastChannel' in window) ? new BroadcastChannel('fasti') : null;
+
+function persist(){
+  // `hold`: the saved copy was missing when it should not have been. Nothing is written over it until sync has been asked.
+  if (App.hold) return;
+  Store.save(App.state, App.sync).then(
+    () => { if (App.notices.save) { delete App.notices.save; emit(); } },
+    () => { App.notices.save = 'Could not save on this device. Changes last only while this page stays open.'; emit(); });
+  const ui = lsGet(KEY.ui); if (!ui.had) { ui.had = true; lsSet(KEY.ui, ui); }
+}
+// Every change he makes goes through here: memory first, then the device, and only then, later, the network.
+function change(fn){
+  App.state = fn(App.state);
+  App.sync = C.syncOn.changed(App.sync, Date.now());
+  persist(); emit(); Sync.run();
+  if (channel) channel.postMessage('saved');
+}
+const putItems = (s, items) => { const next = Object.assign({}, s.items); for (const it of items) next[it.id] = it; return Object.assign({}, s, { items: next }); };
+
+/* ================= 4. The network: sealed packets to and from the sync server ================= */
+const Net = {
+  endpoint: () => (DEV && lsGet(KEY.dev).endpoint) || C.SYNC_ENDPOINT,
+  // Every request gives up after eight seconds. A timeout is just a failure to retry later.
+  async timed(fn){
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), C.SYNC_RULES.timeoutMs);
+    try { return await fn(ctl.signal); } finally { clearTimeout(timer); }
+  },
+  get(code, name){
+    return Net.timed(async signal => {
+      const { kvKey, cryptoKey } = await C.syncKeys(code, name);
+      const r = await fetch(Net.endpoint() + '/sync/' + kvKey, { signal });
+      if (r.status === 404) return { missing: true, at: 0, now: null };
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const pkt = await r.json();
+      return { missing: false, value: await C.decryptPayload(pkt, cryptoKey), at: Number.isFinite(pkt.at) ? pkt.at : 0, now: Number.isFinite(pkt.now) ? pkt.now : null };
+    });
+  },
+  put(code, name, value){
+    return Net.timed(async signal => {
+      const { kvKey, cryptoKey } = await C.syncKeys(code, name);
+      const pkt = await C.encryptPayload(value, cryptoKey);
+      pkt.from = Device.id();
+      const body = JSON.stringify(pkt), opts = { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body, signal };
+      if (C.shouldKeepalive(body.length)) opts.keepalive = true;      // lets a push made on leaving outlive the page
+      const r = await fetch(Net.endpoint() + '/sync/' + kvKey, opts);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json();
+      return { at: Number.isFinite(j.now) ? j.now : Date.now() };
+    });
+  },
+};
+
+/* ================= 5. Sync: FastiCore.syncPlan decides, this carries it out ================= */
+const Sync = (() => {
+  let busy = false, again = false, timer = null;
+  const visible = () => document.visibilityState === 'visible';
+  const env = () => ({ hasCode: !!Device.code(), visible: visible() });
+  const noteClock = serverNow => { if (Number.isFinite(serverNow)) App.sync = C.syncOn.skew(App.sync, Date.now() - serverNow); };
+  // Merge in the server's copy and collect any import batches. Not async on purpose:
+  // the state may have changed while the requests were in the air, so it is read here, at the last moment.
+  function takeIn(main, inbox){
+    let next = main.missing ? App.state : C.mergeStates(App.state, main.value);
+    const got = (inbox && !inbox.missing) ? C.collectInbox(next, inbox.value) : { state: next, added: [] };
+    next = C.compact(got.state, Date.now());
+    const ahead = main.missing || C.aheadOf(next, main.value, Date.now());
+    App.state = next;
+    if (got.added.length) { const ui = lsGet(KEY.ui); ui.arrived = (ui.arrived || []).concat(got.added); lsSet(KEY.ui, ui); }
+    return ahead;
+  }
+  async function step(action){
+    const code = Device.code(), same = () => code === Device.code();
+    try {
+      if (action === 'fetch') {
+        const main = await Net.get(code, C.SYNC_MAIN), inbox = await Net.get(code, C.SYNC_INBOX);
+        if (!same()) return;
+        noteClock(main.now); App.stats.fetches++;
+        const ahead = takeIn(main, inbox);
+        App.sync = C.syncOn.fetched(App.sync, Date.now(), main.at, ahead);
+      } else {
+        // Look before writing: the server has no way to refuse a push that would overwrite a newer copy.
+        const main = await Net.get(code, C.SYNC_MAIN);
+        if (!same()) return;
+        noteClock(main.now);
+        if (!main.missing && C.pushRace(main.at, App.sync.lastSeenAt) === 'merge-first') {
+          const inbox = await Net.get(code, C.SYNC_INBOX);
+          if (!same()) return;
+          takeIn(main, inbox);
+        }
+        const sentAt = Date.now(), res = await Net.put(code, C.SYNC_MAIN, App.state);
+        if (!same()) return;
+        App.stats.pushes++;
+        App.sync = C.syncOn.pushed(App.sync, Date.now(), res.at, sentAt);
+      }
+      delete App.notices.lost;       // sync has been asked, and whatever it held is merged in
+    } catch (e) {
+      if (same()) App.sync = C.syncOn.failed(App.sync, Date.now());
+    } finally {
+      App.hold = false;
+      persist();
+    }
+  }
+  async function run(){
+    if (!App.ready) return;
+    if (busy) { again = true; return; }
+    busy = true; clearTimeout(timer); timer = null;
+    try {
+      for (let n = 0; n < 8; n++) {
+        const plan = C.syncPlan(App.sync, Date.now(), env());
+        if (!plan.action) { if (plan.at != null) timer = setTimeout(run, Math.max(50, plan.at - Date.now() + 20)); break; }
+        await step(plan.action); emit();
+      }
+    } finally { busy = false; emit(); if (again) { again = false; run(); } }
+  }
+  const wake = () => { App.sync = C.syncOn.shown(App.sync, Date.now()); };
+  return { run, env,
+    start(){
+      document.addEventListener('visibilitychange', () => { if (visible()) { wake(); Shell.checkForUpdate(); } run(); });
+      window.addEventListener('pagehide', run);
+      // "online" only means a network is attached. It is a cue to try, never proof of a connection.
+      window.addEventListener('online', () => { wake(); run(); });
+      if (visible()) wake();
+      run();
+    },
+    now(){ App.sync = Object.assign(C.syncOn.shown(App.sync, Date.now()), { fetchAt: 0 }); run(); },
+    setCode(raw){
+      const code = raw ? C.normaliseSyncCode(raw) : '';
+      if (raw && !code) return false;
+      Device.setCode(code);
+      App.sync = C.syncOn.codeSet(App.sync, Date.now());
+      persist(); emit(); run();
+      if (code && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+      return true;
+    },
+  };
+})();
+// Another window of the app on this device has saved: take its copy in.
+if (channel) channel.onmessage = async () => {
+  try {
+    const st = await Store.read();
+    if (!st.state) return;
+    App.state = C.mergeStates(App.state, st.state);
+    if (st.sync) App.sync = Object.assign({}, st.sync, { dirty: !!(st.sync.dirty || App.sync.dirty), changedAt: Math.max(st.sync.changedAt || 0, App.sync.changedAt || 0) });
+    emit();
+  } catch (e) {}
+};
+
+/* ================= 6. The offline file (service worker) and new versions ================= */
+const Shell = (() => {
+  let reg = null;
+  return {
+    register(){
+      if (!('serviceWorker' in navigator)) return;
+      // While developing on this Mac the offline file would keep serving yesterday's page, so it is off unless switched on.
+      if (DEV && !lsGet(KEY.dev).sw) {
+        navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
+        if (window.caches) caches.keys().then(ks => ks.filter(k => k.startsWith('fasti-')).forEach(k => caches.delete(k))).catch(() => {});
+        return;
+      }
+      const had = !!navigator.serviceWorker.controller;      // false on the very first visit: taking control then is not an update
+      navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' }).then(r => { reg = r; }).catch(() => {});
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!had) return;
+        // Reload by itself only if nothing is being typed.
+        if (isEditing()) { App.updateReady = true; emit(); } else location.reload();
+      });
+    },
+    // iOS resumes a suspended app without looking for a new version, so look each time the app is shown.
+    checkForUpdate(){ if (reg) reg.update().catch(() => {}); },
+  };
+})();
+// An open sheet (the add bar, an editor, Settings) means something may be half typed.
+const isEditing = () => !!(typeof UI !== 'undefined' && UI.sheet);
+
+/* ================= 7. Starting up ================= */
+async function start(){
+  let stored = null;
+  try { stored = await Store.load(); }
+  catch (e) { App.notices.save = 'This browser will not let Fasti save on this device. Changes last only while this page stays open.'; }
+  if (stored && stored.state && stored.state.app === 'fasti') {
+    App.state = stored.state;
+    App.sync = Object.assign(C.newSyncState(), stored.sync);
+  } else {
+    App.state = C.newState(Date.now());
+    // Safari has had a fault where a saved database comes back empty. If a copy was saved here before,
+    // do not write a fresh one over it: ask sync first.
+    if (lsGet(KEY.ui).had) {
+      App.hold = !!Device.code();
+      App.notices.lost = Device.code() ? 'The copy saved on this device was missing. Fetching it back from sync.'
+        : 'The copy saved on this device was missing, and there is no sync code here to fetch it back with.';
+    }
+  }
+  App.state = C.compact(App.state, Date.now());
+  App.ready = true;
+  Shell.register();
+  if (Device.code() && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  listeners.push(render);
+  applyLook();
+  emit();
+  restoreScroll();
+  Sync.start();
+  // The minute hand: events slip into the past, "free until" shrinks, and at midnight tasks carry forward.
+  setInterval(() => { if (document.visibilityState === 'visible') render(); }, 60000);
+}
+
+/* ================= 8. The pages ================= */
+// What is on screen. Which tab and which lens are remembered between visits; the rest is not.
+// The phone and the Mac each remember their own page (`tab` and `mtab`): the Mac has three and opens on Week the first time.
+const UI = { tab: 'every', mtab: 'week', lens: 'date', q: '', pendingOpen: false, undatedOpen: false, somedayOpen: false,
+  period: null, selDay: null, selWeek: null, week: null, pick: null, cur: null, hh: 58, drag: false, sheet: null, toastUndo: null, scroll: {} };
+{ const u = lsGet(KEY.ui); if (u.tab === 'term') UI.tab = 'term'; if (u.mtab === 'every' || u.mtab === 'term') UI.mtab = u.mtab; if (u.lens === 'area') UI.lens = 'area';
+  if (u.scroll && typeof u.scroll === 'object') UI.scroll = u.scroll;
+  for (const k of Object.keys(UI.scroll)) if (k.indexOf('m:week') === 0) delete UI.scroll[k]; }       // the week grid always opens at 08:00
+function saveUI(){ const u = lsGet(KEY.ui); u.tab = UI.tab; u.mtab = UI.mtab; u.lens = UI.lens; u.scroll = UI.scroll; lsSet(KEY.ui, u); }
+function restoreScroll(){ if (!MAC) window.scrollTo(0, UI.scroll[UI.tab] || 0); }
+// A window 700 px wide or more is the Mac layout; anything narrower is the phone's. So is anything under 500 px tall:
+// a phone held sideways is wide but short, and the phone never shows an hour grid.
+// Measured by the page's own layout, not window.innerWidth: on a phone that number grows when the browser shrinks an
+// over-wide page to fit, which would hold the Mac layout on screen after the phone was turned back upright.
+let MAC = false;
+const isMac = () => { const d = document.documentElement; return d.clientWidth >= 700 && d.clientHeight >= 500; };
+const page = () => MAC ? UI.mtab : UI.tab;
+
+const S = () => App.state;
+const nowL = () => C.londonNow(Date.now());
+const areaList = () => Object.keys(S().areas).map(k => S().areas[k]).filter(a => a && !a.deleted).sort((a, b) => a.order - b.order);
+const areaOf = id => S().areas[id] || { name: '', colour: 'pers' };
+const dot = id => '<i class="dot" style="background:var(--a-' + esc(areaOf(id).colour) + ')"></i>';
+const label = (d, o) => C.dateLabel(d, Object.assign({ today: nowL().date }, o));
+const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
+const BAR_COLOUR = { glass: '#e6e0f0', steel: '#d6dbe1', slate: '#2b3441' };
+function applyLook(){
+  const st = S().settings || {}, theme = ['glass', 'steel', 'slate'].indexOf(st.theme) >= 0 ? st.theme : 'glass';
+  document.body.className = 'th-' + theme + ' sz-' + (['compact', 'standard', 'roomy'].indexOf(st.size) >= 0 ? st.size : 'standard') + (MAC ? ' mac' : '');
+  // The strip the phone draws above the page (and the Mac's title bar) takes the look's colour.
+  const bar = document.querySelector('meta[name="theme-color"]'); if (bar && bar.content !== BAR_COLOUR[theme]) bar.content = BAR_COLOUR[theme];
+}
+const ICON = {
+  every: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>',
+  term: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="5" height="5" rx="1.2"/><rect x="9.5" y="3" width="5" height="5" rx="1.2"/><rect x="16" y="3" width="5" height="5" rx="1.2"/><rect x="3" y="9.5" width="5" height="5" rx="1.2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1.2"/><rect x="16" y="9.5" width="5" height="5" rx="1.2"/><rect x="3" y="16" width="5" height="5" rx="1.2"/><rect x="9.5" y="16" width="5" height="5" rx="1.2"/><rect x="16" y="16" width="5" height="5" rx="1.2"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M10 2.5h4l.5 2.6 2.2 1.3 2.5-.9 2 3.5-2 1.7v2.6l2 1.7-2 3.5-2.5-.9-2.200 1.3-.5 2.6h-4l-.5-2.6-2.200-1.3-2.5.9-2-3.5 2-1.7v-2.6l-2-1.7 2-3.5 2.5.9 2.200-1.3z"/></svg>',
+  prev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
+  next: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+};
+
+/* ----- rows. On the phone, line one is the tick or the time, then the title, which wraps; line two is the details.
+   On the Mac the same pieces sit on one line, with the estimate in its own column at the right; a long title still wraps. ----- */
+const tickHTML = t => '<button class="tick' + (t.done ? ' on' : '') + '" data-act="tick" data-id="' + esc(t.id) + '" aria-pressed="' + !!t.done + '" aria-label="' + (t.done ? 'Untick: ' : 'Tick off: ') + esc(t.title) + '"><i></i></button>';
+const timesHTML = (a, z) => MAC ? C.fmtTime(a) + '–' + C.fmtTime(z) : C.fmtTime(a) + '<small>' + C.fmtTime(z) + '</small>';
+const estCol = t => MAC ? '<span class="est">' + (t && t.est ? C.fmtDur(t.est) : '') + '</span>' : '';
+function taskRow(t, o){
+  o = o || {};
+  const n = nowL(), bits = [];
+  if (o.day && t.plan) bits.push('<span>' + C.WD[C.weekday(t.plan)] + '</span>');
+  if (o.when && t.plan && !t.done) bits.push('<span>' + esc(label(t.plan)) + '</span>');
+  if (t.due && !t.done) { const u = C.urgency(t.due, n, !!o.inDay); bits.push('<span class="u-' + u.level + '">' + esc(u.text) + '</span>'); }
+  if (t.done && o.when) bits.push('<span>done ' + esc(label(C.londonDate(t.done), { week: false })) + '</span>');
+  if (t.moved && !t.done) bits.push('<span class="faint">moved ' + t.moved + '×</span>');
+  if (t.block && !t.done) bits.push('<span class="tn">' + C.fmtTime(t.block.start) + '–' + C.fmtTime(t.block.end) + '</span>');
+  if (t.est && !MAC) bits.push('<span>' + C.fmtDur(t.est) + '</span>');
+  return '<div class="r2' + (t.done ? ' is-done' : '') + '" data-act="open" data-id="' + esc(t.id) + '" role="button" tabindex="0"' + (o.drag ? ' data-drag="task"' : '') + '>'
+    + '<span class="lead">' + tickHTML(t) + '</span>'
+    + '<span class="ttl">' + (t.important ? '<span class="imp" role="img" aria-label="Important">★</span>' : '') + (esc(t.title) || 'Untitled') + '</span>'
+    + (bits.length ? '<span class="sub">' + bits.join('') + '</span>' : '') + '<span class="trail">' + dot(t.area) + '</span>' + estCol(t) + '</div>';
+}
+function eventRow(e, o){
+  o = o || {};
+  const sub = [];
+  if (e.clash) sub.push('<span class="clash">clashes with ' + esc(e.clash) + '</span>');
+  if (o.when) sub.push('<span>' + esc(label(e.date)) + '</span>');
+  if (e.place) sub.push('<span>' + esc(e.place) + '</span>');
+  const lead = e.allDay ? (MAC ? 'all day' : 'all<small>day</small>') : timesHTML(e.start, e.end);
+  return '<div class="r2' + (o.past ? ' is-past' : '') + '" data-act="open" data-id="' + esc(e.id) + '" role="button" tabindex="0"><span class="lead timecol">' + lead + '</span>'
+    + '<span class="ttl">' + (esc(e.title) || 'Untitled') + '</span>' + (sub.length ? '<span class="sub">' + sub.join('') + '</span>' : '') + '<span class="trail">' + dot(e.area) + '</span>' + estCol() + '</div>';
+}
+const seriesWords = s => s.days.map(d => C.WD[d]).join(', ') + ' · weeks ' + C.weeksText(s.weeks) + (C.termById(s.term) ? ', ' + C.termById(s.term).name + ' ' + C.termById(s.term).year : '');
+function seriesRow(r){
+  const s = r.series;
+  return '<div class="r2" data-act="open" data-id="' + esc(s.id) + '" role="button" tabindex="0"><span class="lead timecol">' + timesHTML(s.start, s.end) + '</span>'
+    + '<span class="ttl">' + (esc(s.title) || 'Untitled') + '</span><span class="sub"><span>' + esc(seriesWords(s)) + '</span><span>' + plural(r.count, 'time') + '</span>' + (s.place ? '<span>' + esc(s.place) + '</span>' : '') + '</span><span class="trail">' + dot(s.area) + '</span>' + estCol() + '</div>';
+}
+const rowHTML = r => r.type === 'task' ? taskRow(r.task, r) : r.type === 'free' ? '<div class="free">' + esc(r.text) + '</div>' : r.type === 'series' ? seriesRow(r) : eventRow(r.event, r);
+
+function dayBlock(d, o){
+  const rel = C.diffDays(nowL().date, d.date), name = rel === 0 ? 'Today' : rel === 1 ? 'Tomorrow' : '';
+  const lbl = name ? name + '<span class="hsub">' + esc(label(d.date)) + '</span>' : esc(label(d.date));
+  const motto = String((S().settings || {}).motto || '').trim();
+  // When everything planned for today is ticked off, the reminder line takes the place of the hours.
+  const right = d.empty ? 'Nothing on' : d.allDone ? (motto ? '<span class="motto">' + esc(motto) + '</span>' : '') : d.mins ? C.fmtDur(d.mins) + ' planned' : '';
+  // `close`: a day picked on the Mac's term page that the list does not otherwise show; it is put at the top, and can be put away.
+  const close = o && o.close ? '<button class="sbtn ghost" data-act="pickclose">Close</button>' : '';
+  return '<div class="dayhead' + (d.empty ? ' is-empty' : '') + (UI.pick === d.date ? ' picked' : '') + '" data-date="' + d.date + '"><span>' + lbl + '</span><span class="htot">' + right + close + '</span></div>'
+    + (d.empty ? '' : '<div class="panel">' + d.rows.map(rowHTML).join('') + '</div>');
+}
+function ringHTML(r){
+  const f = r.target ? Math.min(1, r.mins / r.target) : 0, c = 2 * Math.PI * 15;
+  return '<div class="ring" role="img" aria-label="' + C.fmtDur(r.mins) + ' of work this week, against ' + C.fmtDur(r.target) + '"><div><b>' + C.fmtDur(r.mins) + '</b>of ' + C.fmtDur(r.target) + '</div>'
+    + '<svg viewBox="0 0 40 40" aria-hidden="true"><circle class="bg" cx="20" cy="20" r="15"/><circle class="fg" cx="20" cy="20" r="15" stroke-dasharray="' + (c * f).toFixed(1) + ' ' + c.toFixed(1) + '" transform="rotate(-90 20 20)"/></svg></div>';
+}
+function weekHeadHTML(w, ring){
+  const st = w.stats, bits = [w.range, plural(st.tasks, 'task')];
+  if (st.mins) bits.push(C.fmtDur(st.mins) + ' planned');
+  bits.push(plural(st.deadlines, 'deadline'));
+  return '<div class="weekhead"><div><b>' + esc(w.title) + '</b><span class="wsub">' + esc(bits.join(' · ')) + '</span></div>' + (ring ? ringHTML(ring) : '') + '</div>';
+}
+const sectionHead = (title, sub) => '<div class="weekhead"><div><b>' + esc(title) + '</b>' + (sub ? '<span class="wsub">' + esc(sub) + '</span>' : '') + '</div></div>';
+function fold(key, title, list){
+  return '<button class="fold" data-act="toggle" data-k="' + key + '" aria-expanded="' + UI[key] + '"><span>' + title + '<span class="hsub">' + list.length + '</span></span><span aria-hidden="true">' + (UI[key] ? '▾' : '▸') + '</span></button>'
+    + (UI[key] ? (list.length ? '<div class="panel">' + list.map(t => taskRow(t)).join('') + '</div>' : '<div class="empty">Nothing here.</div>') : '');
+}
+function noticesHTML(){
+  let h = '';
+  if (App.updateReady) h += '<div class="banner"><span>New version ready</span><button class="sbtn" data-act="reload">Reload</button></div>';
+  for (const k of Object.keys(App.notices)) h += '<div class="banner bad"><span>' + esc(App.notices[k]) + '</span></div>';
+  const s = S(), arrived = (lsGet(KEY.ui).arrived || []).filter(id => s.imports[id] && !s.imports[id].undone && C.importSummary(s.imports[id]));
+  for (const id of arrived) h += '<div class="banner"><span>' + esc(C.importSummary(s.imports[id])) + '</span><span style="display:flex;gap:6px"><button class="sbtn" data-act="undo-import" data-id="' + esc(id) + '">Undo</button><button class="sbtn ghost" data-act="dismiss-import" data-id="' + esc(id) + '">OK</button></span></div>';
+  return h;
+}
+
+/* ----- Everything ----- */
+function everyBody(m){
+  const n = nowL();
+  let h = MAC ? '' : noticesHTML();
+  if (UI.q.trim()) {
+    const found = C.searchItems(S(), n, UI.q);
+    h += sectionHead(plural(found.rows.length, 'result'), 'titles, places, notes and areas');
+    h += found.rows.length ? '<div class="panel" style="margin-top:8px">' + found.rows.map(rowHTML).join('') + '</div>' : '<div class="empty">Nothing matches.</div>';
+    return h;
+  }
+  if (UI.lens === 'area') {
+    const groups = C.byArea(S(), n).groups;
+    if (!groups.length) h += '<div class="empty">No open tasks.</div>';
+    for (const g of groups) h += '<div class="dayhead"><span>' + dot(g.area.id) + ' ' + esc(g.area.name) + '<span class="hsub">' + g.rows.length + '</span></span></div><div class="panel">' + g.rows.map(rowHTML).join('') + '</div>';
+    return h + statusHTML();
+  }
+  m = m || C.everything(S(), n);
+  if (MAC && UI.pick && !m.thisWeek.days.concat(m.nextWeek.days).some(d => d.date === UI.pick)) h += dayBlock(C.dayRows(m.view, UI.pick, { all: true }), { close: true });
+  if (m.pending.length) {
+    h += '<div class="pendwrap"><button class="pending" data-act="toggle" data-k="pendingOpen" aria-expanded="' + UI.pendingOpen + '"><i></i>Pending ' + m.pending.length + '<span aria-hidden="true">' + (UI.pendingOpen ? '▾' : '▸') + '</span></button>';
+    if (UI.pendingOpen) h += '<div class="panel" style="margin-top:8px">' + m.pending.map(t => taskRow(t) + '<div class="acts"><button class="sbtn" data-act="tick" data-id="' + esc(t.id) + '">Done</button>'
+      + '<button class="sbtn" data-act="redate" data-id="' + esc(t.id) + '">New deadline</button><button class="sbtn ghost" data-act="letgo" data-id="' + esc(t.id) + '">Let it go</button></div>').join('') + '</div>';
+    h += '</div>';
+  }
+  h += weekHeadHTML(m.thisWeek, MAC ? null : m.ring) + m.thisWeek.days.map(d => dayBlock(d)).join('');
+  if (m.nextWeek.days.length) h += weekHeadHTML(m.nextWeek) + m.nextWeek.days.map(d => dayBlock(d)).join('');
+  if (m.later.length) {
+    h += sectionHead(m.period.kind === 'term' ? 'Later this term' : 'Later this vacation', 'deadlines and one-off events');
+    for (const w of m.later) h += '<div class="dayhead"><span>' + esc(w.title) + '<span class="hsub">' + esc(w.range) + '</span></span></div><div class="panel">' + w.rows.map(rowHTML).join('')
+      + (w.more ? '<div class="more">' + (w.rows.length ? 'and ' : '') + plural(w.more.tasks, 'planned task') + (w.more.mins ? ' · ' + C.fmtDur(w.more.mins) : '') + '</div>' : '') + '</div>';
+  }
+  for (const a of m.after) h += sectionHead(a.name, 'deadlines and one-off events') + '<div class="panel" style="margin-top:8px">' + a.rows.map(rowHTML).join('') + '</div>';
+  if (!MAC) h += '<div style="margin-top:18px">' + fold('undatedOpen', 'Undated', m.undated) + fold('somedayOpen', 'Someday', m.someday) + '</div>';
+  return h + statusHTML();
+}
+// On the phone the sync status is the last line of each page; on the Mac it is in the bar across the top.
+const statusHTML = () => MAC ? '' : '<button class="status" data-act="settings">' + esc(C.syncStatus(App.sync, Date.now(), Sync.env())) + '</button>';
+
+/* ----- Term ----- */
+const DUE_COLOUR = { past: '--danger', soon: '--soon', ahead: '--a-tut' }, DUE_WORDS = { past: 'missed deadline', soon: 'deadline', ahead: 'deadline' };
+function termBody(){
+  const n = nowL(), g = C.termGrid(S(), n, UI.period), per = g.period;
+  const inPer = d => d && d >= per.first && d <= per.last;
+  if (!inPer(UI.selDay)) UI.selDay = null;
+  if (!inPer(UI.selWeek)) UI.selWeek = null;
+  if (!UI.selDay && !UI.selWeek && inPer(n.date)) UI.selDay = n.date;
+  let h = noticesHTML() + '<div class="pgrid"><span></span>' + C.WD.map((d, i) => '<span class="h" aria-label="' + C.WDL[i] + '">' + d.slice(0, 2) + '</span>').join('');
+  for (const w of g.weeks) {
+    const name = w.n === null ? 'the week of ' + label(w.sunday, { weekday: false, week: false }) : C.ord(w.n) + ' week';
+    h += '<button class="w' + (UI.selWeek === w.sunday ? ' on' : '') + '" data-act="selweek" data-d="' + w.sunday + '" aria-label="Show ' + esc(name) + ' in words">' + (w.n === null ? +w.sunday.slice(8) : w.n) + '</button>';
+    for (const d of w.days) {
+      const cls = ['pc']; if (d.today) cls.push('today'); if (d.past) cls.push('past'); if (UI.selDay === d.date) cls.push('sel'); if (UI.selWeek === w.sunday) cls.push('inwk');
+      const say = [C.WDL[C.weekday(d.date)] + ' ' + label(d.date, { weekday: false, week: false })]; if (d.due) say.push(DUE_WORDS[d.due]); if (d.dots.length) say.push(plural(d.dots.length, 'one-off event'));
+      h += '<button class="' + cls.join(' ') + '" style="--tint:' + d.tint + '%" data-act="selday" data-d="' + d.date + '" aria-label="' + esc(say.join(', ')) + '"' + (UI.selDay === d.date ? ' aria-pressed="true"' : '') + '>' + d.day
+        + (d.due ? '<span class="due" style="--dc:var(' + DUE_COLOUR[d.due] + ')"></span>' : '') + '<span class="dots">' + d.dots.map(a => '<i style="background:var(--a-' + esc(areaOf(a).colour) + ')"></i>').join('') + '</span></button>';
+    }
+  }
+  h += '</div><div class="legend"><span><i class="c"></i>corner = deadline</span><span><i class="d"></i>dot = one-off event</span><span><i class="s"></i>darker = fuller day</span></div>';
+  if (UI.selWeek) {
+    const w = g.weeks.find(x => x.sunday === UI.selWeek);
+    h += sectionHead(w.n === null ? per.name : C.ord(w.n) + ' week', C.weekRange(w.sunday));
+    for (const d of w.days) h += dayBlock(C.dayRows(g.view, d.date));
+  } else if (UI.selDay) h += dayBlock(C.dayRows(g.view, UI.selDay, { all: true }));
+  else h += '<div class="empty">Tap a day to see what is on it, or a week’s number to read the whole week.</div>';
+  if (per.id === 'TT28') h += '<div class="note" style="margin-top:14px">The term dates in Fasti end here, at Trinity 2028.</div>';
+  return h + statusHTML();
+}
+
+/* ================= 8b. The Mac pages: Everything in two columns, Term as a full page, Week =================
+   The rows, the list and the editors are the phone's; these lay them out for a wide window. */
+const lensSeg = () => '<div class="seg" role="group" aria-label="Group the list by"><button data-act="lens" data-k="date" aria-pressed="' + (UI.lens === 'date') + '">Date</button><button data-act="lens" data-k="area" aria-pressed="' + (UI.lens === 'area') + '">Area</button></div>';
+const arrows = (prev, next, what) => '<button class="icon" data-act="' + what + '" data-k="' + esc(prev || '') + '" aria-label="Earlier"' + (prev ? '' : ' disabled') + '>' + ICON.prev + '</button>'
+  + '<button class="icon" data-act="' + what + '" data-k="' + esc(next || '') + '" aria-label="Later"' + (next ? '' : ' disabled') + '>' + ICON.next + '</button>';
+const taskPanel = (list, o, none) => list.length ? '<div class="panel">' + list.map(t => taskRow(t, o)).join('') + '</div>' : '<div class="empty">' + none + '</div>';
+
+/* ----- Everything: Undated and Someday on the left, the list beside them, the ring in the heading ----- */
+function macEvery(){
+  const n = nowL(), m = C.everything(S(), n);
+  const col = (title, list) => '<div class="colhead"><span>' + title + '</span><span>' + list.length + '</span></div>' + taskPanel(list, null, 'Nothing here.');
+  return '<div class="mevery"><aside class="mleft narrow" data-scroll="left" aria-label="Undated and Someday">' + col('Undated', m.undated) + '<div style="height:14px"></div>' + col('Someday', m.someday) + '</aside>'
+    + '<section class="mmid"><div class="listhead"><div><h1 class="h1">Everything</h1><div class="h1sub">' + esc(label(n.date)) + '</div></div>' + lensSeg() + '<span class="sp"></span>' + ringHTML(m.ring) + '</div>'
+    + '<div class="mlist" data-scroll="list"><div class="mlistin">' + everyBody(m) + '</div></div></section></div>';
+}
+
+/* ----- Term: each day says what is on, in words. Hovering lists the whole day; clicking opens it in Everything ----- */
+let termView = null;
+function macTerm(){
+  const n = nowL(), g = C.termGrid(S(), n, UI.period), per = g.period, plain = { weekday: false, week: false };
+  termView = g.view;
+  const sub = (per.kind === 'term' ? '0th–9th week · full term ' + label(C.addDays(per.first, 7), { week: false }) + ' – ' + label(C.addDays(per.last, -7), { week: false }) : esc(label(per.first, plain) + ' to ' + label(per.last, plain)))
+    + ' · <i class="dmark"></i>marks a deadline · the bar shows how full a day is';
+  let h = '<div class="mterm" data-scroll="term"><div class="listhead"><div><h1 class="h1">' + esc(per.name) + '</h1><div class="h1sub">' + sub + '</div></div><span class="sp"></span><div class="navrow">'
+    + (per.id !== C.periodOf(n.date).id ? '<button class="sbtn ghost" data-act="period" data-k="">Back to today</button>' : '') + arrows(g.prev, g.next, 'period') + '</div></div>'
+    + '<div class="tgrid" style="grid-template-rows:24px repeat(' + g.weeks.length + ',minmax(70px,auto))"><span></span>' + C.WD.map(d => '<div class="th">' + d + '</div>').join('');
+  for (const w of g.weeks) {
+    const name = w.n === null ? label(w.sunday, plain) : C.ord(w.n) + ' wk';
+    h += '<button class="tw" data-act="gowk" data-d="' + w.sunday + '" aria-label="Open ' + esc(w.n === null ? 'the week of ' + name : C.ord(w.n) + ' week') + ' on the Week page"><b>' + esc(name) + '</b><span>' + esc(C.weekRange(w.sunday)) + '</span></button>';
+    for (const d of w.days) {
+      const words = l => (l.kind === 'due' ? (l.done ? 'handed in: ' : l.level === 'past' ? 'missed deadline: ' : 'deadline: ') : '') + l.text + (l.time != null ? ' ' + C.fmtTime(l.time) : '');
+      const say = [C.WDL[C.weekday(d.date)] + ' ' + label(d.date, plain)].concat(d.lines.map(words)); if (d.more) say.push('and ' + d.more + ' more');
+      h += '<button class="tc' + (d.today ? ' today' : '') + (d.past ? ' past' : '') + '" style="--tint:' + d.tint + '%" data-act="pickday" data-d="' + d.date + '" aria-label="' + esc(say.join(', ')) + '">'
+        + '<span class="cday">' + d.day + (d.day === 1 || d.date === per.first ? ' ' + C.MON[+d.date.slice(5, 7) - 1] : '') + '</span>'
+        + d.lines.map(l => '<span class="citem' + (l.kind === 'due' ? (l.done ? ' is-done' : ' u-' + l.level) : '') + '">' + (l.kind === 'due' ? '<i class="dmark"></i>' : '') + esc(l.text) + (l.time != null ? ' <span class="tn">' + C.fmtTime(l.time) + '</span>' : '') + '</span>').join('')
+        + (d.more ? '<span class="citem more">+' + d.more + ' more</span>' : '') + (d.fill ? '<span class="cload"><i style="width:' + d.fill + '%"></i></span>' : '') + '</button>';
+    }
+  }
+  h += '</div>';
+  if (per.id === 'TT28') h += '<div class="note" style="margin-top:10px">The term dates in Fasti end here, at Trinity 2028.</div>';
+  return h + '</div>';
+}
+let tipCell = null;
+function hideTip(){ tipCell = null; $('tip').hidden = true; }
+function showTip(cell){
+  const lines = C.dayTip(termView, cell.dataset.d), t = $('tip');
+  t.innerHTML = '<b>' + esc(label(cell.dataset.d)) + '</b>' + (lines.length ? lines.map(l => '<div class="tipline' + (l.done ? ' is-done' : '') + '"><span>' + esc(l.lead) + '</span><span' + (l.level && !l.done ? ' class="u-' + l.level + '"' : '') + '>'
+    + esc(l.text) + (l.clash ? ' <span class="clash">clash</span>' : '') + '</span></div>').join('') : '<div class="faint">Nothing on</div>');
+  t.hidden = false;
+  const r = cell.getBoundingClientRect(), w = t.offsetWidth, ht = t.offsetHeight;
+  const win = document.documentElement;
+  t.style.left = Math.max(8, Math.min(r.left, win.clientWidth - w - 8)) + 'px';
+  t.style.top = (r.bottom + 6 + ht > win.clientHeight - 8 ? Math.max(8, r.top - ht - 6) : r.bottom + 6) + 'px';
+}
+
+/* ----- Week: seven columns of hours, a Due row and an all-day row above them, and the tasks still to schedule beside them ----- */
+function boxHTML(b){
+  const it = b.kind === 'task' ? b.task : b.event, len = b.end - b.start, times = C.fmtTime(b.start) + '–' + C.fmtTime(b.end), clash = b.event && b.event.clash;
+  const cls = ['blk']; if (b.kind === 'task') cls.push('task'); if (b.past) cls.push('past'); if (it.done) cls.push('is-done'); if (len < 45) cls.push('short');
+  const pos = 'top:calc(var(--hh)*' + (b.start / 60).toFixed(4) + ');height:calc(var(--hh)*' + (len / 60).toFixed(4) + ' - 2px);left:calc(' + (100 * b.lane / b.lanes).toFixed(2) + '% + 2px);width:calc(' + (100 / b.lanes).toFixed(2) + '% - 5px);--ac:var(--a-' + esc(areaOf(it.area).colour) + ')';
+  // The whole title on hover: a box's height is its length, so a short one cannot always show it.
+  const tip = (it.title || 'Untitled') + ' · ' + times + (it.place ? ' · ' + it.place : '') + (clash ? ' · clashes with ' + clash : '');
+  return '<div class="' + cls.join(' ') + '" style="' + pos + '" data-act="open" data-id="' + esc(b.id) + '"' + (it.done ? '' : ' data-drag="box"') + ' data-s="' + b.start + '" data-e="' + b.end + '" role="button" tabindex="0" title="' + esc(tip) + '">'
+    + (b.kind === 'task' ? tickHTML(it) : '') + '<b>' + (it.important ? '<span class="imp" role="img" aria-label="Important">★</span>' : '') + (esc(it.title) || 'Untitled') + '</b><span class="when tn">' + times + '</span>'
+    + (it.place && len >= 90 ? '<span class="where"> · ' + esc(it.place) + '</span>' : '') + (it.done ? '' : '<i class="grip" aria-hidden="true"></i>') + '</div>';
+}
+function macWeek(){
+  const n = nowL(), w = C.weekGrid(S(), n, UI.week);
+  const dueChip = x => { const t = x.task; return '<button class="chip' + (x.level === 'done' ? ' is-done' : ' u-' + x.level) + '" data-act="open" data-id="' + esc(t.id) + '">' + (esc(t.title) || 'Untitled')
+    + (x.level === 'past' ? ' · missed' : t.due.time != null ? ' <span class="tn">' + C.fmtTime(t.due.time) + '</span>' : '') + '</button>'; };
+  const row = (lab, cell) => '<div class="wrow"><span class="wlab">' + lab + '</span>' + w.days.map(d => '<div class="wcell">' + cell(d) + '</div>').join('') + '</div>';
+  let h = '<div class="mweek"><div class="wmain"><div class="listhead"><div><h1 class="h1">' + esc(w.title) + '</h1><div class="h1sub">' + esc(w.range + (w.termName ? ' · ' + w.termName : '')) + '</div></div><span class="sp"></span>'
+    + '<div class="navrow"><button class="sbtn ghost" data-act="week" data-k="">Today</button>' + arrows(w.prev, w.next, 'week') + '</div></div>'
+    + '<div class="wscroll" id="wscroll" data-scroll="week"><div class="wtop"><div class="wrow"><span></span>' + w.days.map(d => '<div class="wdh' + (d.today ? ' today' : '') + '">' + C.WD[C.weekday(d.date)] + '<b>' + d.day + '</b></div>').join('') + '</div>'
+    + row('Due', d => d.due.map(dueChip).join('')) + row('All day', d => d.allDay.map(e => '<button class="chip allday" data-act="open" data-id="' + esc(e.id) + '">' + (esc(e.title) || 'Untitled') + '</button>').join('')) + '</div>'
+    + '<div class="wbody"><div class="gut" aria-hidden="true">';
+  for (let hr = 1; hr < 24; hr++) h += '<span style="top:calc(var(--hh)*' + hr + ')">' + String(hr).padStart(2, '0') + '</span>';
+  h += '</div>';
+  for (const d of w.days) h += '<div class="dcol' + (d.today ? ' today' : '') + '" data-act="slot" data-d="' + d.date + '">' + d.boxes.map(boxHTML).join('')
+    + (d.today ? '<div class="nowline" style="top:calc(var(--hh)*' + (n.min / 60).toFixed(4) + ')"></div>' : '') + '</div>';
+  h += '</div></div></div>';
+  return h + '<aside class="wside narrow" id="wside" data-scroll="side"><div class="colhead"><span>To schedule</span><span>' + w.toSchedule.length + '</span></div>'
+    + taskPanel(w.toSchedule, { day: true, drag: true }, w.current ? 'Every task planned for this week has its time.' : 'No tasks planned for this week without a time.')
+    + '<div class="colhead" style="margin-top:16px"><span>Undated</span><span>' + w.undated.length + '</span></div>' + taskPanel(w.undated, { drag: true }, 'Nothing here.')
+    + '<p class="hint">Drag a task onto the grid to block time for it. Drag a block back here to take its time off.</p></aside></div>';
+}
+
+/* ----- the Mac's frame: the bar across the top, and what has to be put right after each redraw ----- */
+function macHeadHTML(){
+  return '<div class="mtabs" id="mtabs" role="group" aria-label="Pages">' + [['week', 'Week'], ['every', 'Everything'], ['term', 'Term']].map(t => '<button data-act="tab" data-k="' + t[0] + '">' + t[1] + '</button>').join('') + '</div><span class="sp"></span>'
+    + '<input class="search" id="q" type="search" placeholder="Search" aria-label="Search" autocomplete="off" value="' + esc(UI.q) + '">'
+    + '<button class="msync" id="msync" data-act="settings"></button><button class="addbtn" data-act="add">+ Add<kbd>N</kbd></button><button class="icon" data-act="settings" aria-label="Settings">' + ICON.gear + '</button>';
+}
+function renderMac(){
+  // The bar is built once and then only touched up, so the search box keeps its typing and a tab keeps the keyboard's focus.
+  if (!$('mtabs')) $('head').innerHTML = macHeadHTML();
+  document.querySelectorAll('#mtabs button').forEach(b => { if (b.dataset.k === UI.mtab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  const status = C.syncStatus(App.sync, Date.now(), Sync.env());
+  $('msync').innerHTML = '<i></i><span>' + esc(status) + '</span>'; $('msync').className = 'msync' + (/^Synced/.test(status) ? ' ok' : ''); $('msync').title = status; $('msync').setAttribute('aria-label', status);
+  if (document.activeElement !== $('q') && $('q').value !== UI.q) $('q').value = UI.q;
+  const notes = noticesHTML();
+  $('body').innerHTML = (notes ? '<div class="mnotes">' + notes + '</div>' : '') + '<div class="mpage">' + (UI.mtab === 'week' ? macWeek() : UI.mtab === 'term' ? macTerm() : macEvery()) + '</div>';
+  $('tabs').innerHTML = '';
+  // The hours: 08:00 to 20:00 fill the grid's window, with a sliver above and below so both labels show, and it opens there.
+  // Each scroller goes back to where it was.
+  const sc = $('wscroll');
+  if (sc) { UI.hh = Math.max(40, Math.min(96, Math.floor((sc.clientHeight - sc.querySelector('.wtop').offsetHeight) / 12.3))); sc.style.setProperty('--hh', UI.hh + 'px'); }
+  // (The grid's own place is kept in hours, not pixels, because the height of an hour changes with the window.)
+  document.querySelectorAll('#body [data-scroll]').forEach(el => { const v = UI.scroll['m:' + UI.mtab + ':' + el.dataset.scroll]; el.scrollTop = el === sc ? (v != null ? v : 7.85) * UI.hh : (v || 0); });
+}
+/* ----- the row or box that J and K have moved to. It is found again by its id after every redraw. ----- */
+const navEls = () => Array.from(document.querySelectorAll('#body [data-act="open"][data-id]'));
+function markCur(scroll){
+  document.querySelectorAll('#body .cur').forEach(el => el.classList.remove('cur'));
+  if (!UI.cur) return;
+  const els = navEls(); let el = els[UI.cur.i];
+  if (!el || el.dataset.id !== UI.cur.id) { const j = els.findIndex(x => x.dataset.id === UI.cur.id); if (j < 0) { UI.cur = null; return; } el = els[j]; UI.cur.i = j; }
+  el.classList.add('cur');
+  if (scroll) el.scrollIntoView({ block: 'nearest' });
+}
+function moveCur(dir){
+  const els = navEls(); if (!els.length) return;
+  let i = els.findIndex(el => el.classList.contains('cur'));
+  i = i < 0 ? (dir > 0 ? 0 : els.length - 1) : Math.max(0, Math.min(els.length - 1, i + dir));
+  UI.cur = { id: els[i].dataset.id, i };
+  markCur(true);
+}
+
+/* ----- the top of the page, the bottom bar, and putting it all on screen ----- */
+function headHTML(){
+  const n = nowL(), gear = '<button class="icon" data-act="settings" aria-label="Settings">' + ICON.gear + '</button>';
+  if (UI.tab === 'every') {
+    return '<div class="titlerow"><h1 class="ptitle">Everything</h1>' + gear + '</div><div class="psub">' + esc(label(n.date)) + '</div>'
+      + '<div class="controls"><div class="seg" role="group" aria-label="Group the list by"><button data-act="lens" data-k="date" aria-pressed="' + (UI.lens === 'date') + '">Date</button><button data-act="lens" data-k="area" aria-pressed="' + (UI.lens === 'area') + '">Area</button></div>'
+      + '<input class="search" id="q" type="search" placeholder="Search" aria-label="Search" autocomplete="off" value="' + esc(UI.q) + '"></div>';
+  }
+  const g = C.termGrid(S(), n, UI.period), per = g.period;
+  return '<div class="titlerow"><h1 class="ptitle">' + esc(per.name) + '</h1><button class="icon" data-act="period" data-k="' + esc(g.prev || '') + '" aria-label="Earlier"' + (g.prev ? '' : ' disabled') + '>' + ICON.prev + '</button>'
+    + '<button class="icon" data-act="period" data-k="' + esc(g.next || '') + '" aria-label="Later"' + (g.next ? '' : ' disabled') + '>' + ICON.next + '</button>' + gear + '</div>'
+    + '<div class="psub">' + (per.kind === 'term' ? '0th–9th week · tap a day, or a week’s number' : esc(label(per.first, { weekday: false, week: false }) + ' to ' + label(per.last, { weekday: false, week: false })) + ' · tap a day') + '</div>'
+    + (per.id !== C.periodOf(n.date).id ? '<div class="controls"><button class="sbtn ghost" data-act="period" data-k="">Back to today</button></div>' : '');
+}
+function render(){
+  if (!App.ready) return;
+  // A redraw replaces the whole page, which would destroy a drag in progress. It waits; the drag redraws when it ends.
+  if (UI.drag) return;
+  MAC = isMac();
+  applyLook(); hideTip();
+  if (MAC) renderMac();
+  else {
+    if ($('mtabs') || document.activeElement !== $('q')) $('head').innerHTML = headHTML();
+    $('body').innerHTML = UI.tab === 'term' ? termBody() : everyBody();
+    $('tabs').innerHTML = [['every', 'Everything', ICON.every], ['term', 'Term', ICON.term]].map(t => '<button data-act="tab" data-k="' + t[0] + '"' + (UI.tab === t[0] ? ' aria-current="page"' : '') + '>' + t[2] + t[1] + '</button>').join('');
+  }
+  markCur();
+}
+let toastTimer = null;
+function toast(text, undo){
+  UI.toastUndo = undo || null;
+  $('toast').innerHTML = '<span>' + esc(text) + '</span>' + (undo ? '<button data-act="toast-undo">Undo</button>' : '');
+  $('toast').hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; UI.toastUndo = null; }, 6000);
+}
+
+/* ================= 9. Sheets: the add bar, the editors, Settings ================= */
+function openSheet(sheet){ UI.sheet = sheet; renderSheet(); document.body.style.overflow = 'hidden'; }
+function closeSheet(){ UI.sheet = null; $('sheet').innerHTML = ''; document.body.style.overflow = ''; if (App.updateReady) location.reload(); }
+function frame(title, body){
+  return '<div class="scrim" data-act="close"></div><section class="sheet full" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><div class="sheethead"><h2>' + esc(title) + '</h2>'
+    + '<button class="icon" data-act="close" aria-label="Close">' + ICON.close + '</button></div><div class="sheetbody">' + body + '</div></section>';
+}
+const fld = (lab, inner, hint) => '<label class="f"><span>' + lab + '</span>' + inner + (hint ? '<small>' + hint + '</small>' : '') + '</label>';
+const inp = (id, type, value, extra) => '<input id="' + id + '" type="' + type + '" value="' + esc(value == null ? '' : value) + '"' + (extra ? ' ' + extra : '') + '>';
+const chk = (id, on, text, small) => '<label class="check"><input id="' + id + '" type="checkbox"' + (on ? ' checked' : '') + '><span>' + text + (small ? '<small>' + small + '</small>' : '') + '</span></label>';
+const areaSelect = cur => '<select id="f-area">' + areaList().map(a => '<option value="' + esc(a.id) + '"' + (a.id === cur ? ' selected' : '') + '>' + esc(a.name) + '</option>').join('') + '</select>';
+const clockVal = m => m == null ? '' : (m >= 1440 ? '23:59' : C.fmtTime(m));
+const val = id => { const el = $(id); return el ? (el.type === 'checkbox' ? el.checked : el.value) : undefined; };
+const fail = msg => { const e = $('f-error'); if (e) { e.textContent = msg; e.scrollIntoView({ block: 'nearest' }); } return false; };
+const dateHint = d => C.isDate(d) ? label(d) : 'No day';
+const ERRBOX = '<div id="f-error" class="error" role="alert"></div>';
+
+function renderSheet(){
+  const sh = UI.sheet, s = S();
+  if (!sh) { $('sheet').innerHTML = ''; return; }
+  if (sh.kind === 'add') {
+    $('sheet').innerHTML = '<div class="scrim" data-act="close"></div><section class="sheet top" role="dialog" aria-modal="true" aria-label="Add">'
+      + '<div class="addrow"><input id="add-in" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="sentences" placeholder="essay due Wed 6pm · tutorial Thu 2pm" aria-label="What to add" value="' + esc(sh.text || '') + '">'
+      + '<button class="btn go" data-act="add-go">Add</button></div><div id="add-out"></div><div class="btnrow"><button class="btn" data-act="close">Cancel</button></div></section>';
+    addPreview();
+    const el = $('add-in'), at = sh.caret != null ? sh.caret : el.value.length; el.focus(); el.setSelectionRange(at, at);
+    return;
+  }
+  if (sh.kind === 'settings') { $('sheet').innerHTML = settingsSheet(); return; }
+  if (sh.kind === 'askocc') {
+    // One time of a repeat was dragged on the week grid: this one, or all future ones?
+    const ser = s.items[sh.id], o = ser && !ser.deleted ? C.occurrence(ser, sh.orig) : null;
+    if (!o) { closeSheet(); return; }
+    const a = sh.ch.start != null ? sh.ch.start : o.start, z = sh.ch.end != null ? sh.ch.end : o.end;
+    $('sheet').innerHTML = '<div class="scrim" data-act="close"></div><section class="sheet ask" role="dialog" aria-modal="true" aria-label="Change a repeat">'
+      + '<p><b>' + (esc(o.title) || 'Untitled') + '</b> is one of ' + plural(C.seriesOccurrences(ser).length, 'time') + ' of a repeat.</p>'
+      + '<p>Change it to ' + esc(label(sh.ch.date || o.date)) + ', <span class="tn">' + C.fmtTime(a) + '–' + C.fmtTime(z) + '</span>:</p>'
+      + '<div class="btnrow"><button class="btn go wide" id="ask-one" data-act="occ-move" data-all="">Just this one</button><button class="btn wide" data-act="occ-move" data-all="1">This and all later ones</button>'
+      + '<button class="btn wide" data-act="close">Cancel</button></div></section>';
+    $('ask-one').focus();
+    return;
+  }
+  const it = s.items[sh.id];
+  if (!it || it.deleted) { closeSheet(); return; }
+  $('sheet').innerHTML = it.kind === 'task' ? taskSheet(C.settle(it, nowL().date)) : it.kind === 'event' ? eventSheet(it) : sh.orig ? occurrenceSheet(it, sh.orig) : seriesSheet(it);
+  if (sh.focus && $(sh.focus)) $(sh.focus).focus();
+}
+function openItem(id, focus){
+  const at = id.lastIndexOf('@'), s = S();
+  if (s.items[id]) openSheet({ kind: 'edit', id, focus });
+  else if (at > 0 && s.items[id.slice(0, at)]) openSheet({ kind: 'edit', id: id.slice(0, at), orig: id.slice(at + 1) });
+}
+
+/* ----- the add bar: it shows what it understood as he types ----- */
+function readAdd(){ const n = nowL(); return C.parseAdd($('add-in').value, { today: n.date, nowMin: n.min, areas: areaList() }); }
+function addPreview(){
+  const text = $('add-in').value, n = nowL();
+  if (!text.trim()) { $('add-out').innerHTML = '<div class="hint">Type what it is and when. Words read as a day, a time or a mark are highlighted; tap one to keep it in the title instead.</div>'; return; }
+  const r = readAdd(), d = C.describe(r, { today: n.date, areas: areaList() });
+  let echo = '', p = 0;
+  for (const k of r.marks) { echo += esc(text.slice(p, k.i)) + '<mark class="k-' + k.type + '" data-act="unread" data-i="' + k.i + '" data-j="' + k.j + '" role="button" tabindex="0" aria-label="Keep “' + esc(text.slice(k.i, k.j)) + '” in the title">' + esc(text.slice(k.i, k.j)) + '</mark>'; p = k.j; }
+  echo += esc(text.slice(p));
+  let h = '<div class="echo">' + echo + '</div><div class="pchips">' + d.chips.map(c => '<span class="pchip"><small>' + esc(c[0]) + '</small><b>' + esc(c[1]) + '</b></span>').join('') + '</div>';
+  if (d.needs.length) h += d.needs.map(x => '<div class="error">' + esc(x) + '</div>').join('');
+  else {
+    h += '<div class="will">' + esc(d.will[0]) + '<b>' + esc(d.will[1]) + '</b>' + esc(d.will[2]) + '</div>';
+    const clashes = C.clashesWith(S(), n, C.buildItems(r, { now: 0, id: () => 'preview' }));
+    if (clashes.length) h += '<div class="will clash">Clashes with ' + esc(clashes[0].with) + ' on ' + esc(label(clashes[0].date, { week: false })) + (clashes.length > 1 ? ', and ' + plural(clashes.length - 1, 'other time') : '') + '.</div>';
+  }
+  $('add-out').innerHTML = h;
+}
+function addGo(){
+  const r = readAdd(), items = C.buildItems(r, { now: Date.now() });
+  if (!items.length) { addPreview(); $('add-in').focus(); return; }
+  change(s => putItems(s, items));
+  closeSheet();
+  const what = items.length > 1 ? plural(items.length, 'deadline') : items[0].title;
+  toast('Added: ' + what, () => change(s => putItems(s, items.map(i => C.remove(S().items[i.id] || i, Date.now())))));
+}
+
+/* ----- editing a task ----- */
+function taskSheet(t){
+  const s = S(), group = t.group ? Object.keys(s.items).filter(id => s.items[id] && !s.items[id].deleted && s.items[id].group === t.group).length : 0, id = esc(t.id);
+  let b = fld('Title', inp('f-title', 'text', t.title, 'autocomplete="off"'));
+  b += '<div class="btnrow" style="margin-top:8px">' + ['Today', 'Tomorrow', 'Next week', 'Someday'].map(q => '<button class="sbtn ghost" data-act="quick" data-q="' + q + '">' + q + '</button>').join('') + '</div>';
+  b += fld('Planned for', inp('f-plan', 'date', t.plan || '', 'data-hint="h-plan"'), '<span id="h-plan">' + esc(t.plan ? dateHint(t.plan) : 'No day yet') + (t.moved ? ' · moved ' + t.moved + '×' : '') + '</span>');
+  b += '<div class="pair">' + fld('Deadline', inp('f-due', 'date', t.due ? t.due.date : '', 'data-hint="h-due"')) + fld('at', inp('f-duet', 'time', t.due ? clockVal(t.due.time) : '')) + '</div><div class="note" id="h-due">' + esc(t.due ? dateHint(t.due.date) : 'No deadline') + '</div>';
+  b += '<div class="pair">' + fld('Estimate', inp('f-est', 'text', t.est ? C.fmtDur(t.est) : '', 'placeholder="45m, 1h30" autocomplete="off"')) + fld('Area', areaSelect(t.area)) + '</div>';
+  b += '<div class="flabel" style="margin-top:12px">Time block on the planned day</div><div class="pair">' + inp('f-bs', 'time', t.block ? clockVal(t.block.start) : '', 'class="field" aria-label="Block starts"') + inp('f-be', 'time', t.block ? clockVal(t.block.end) : '', 'class="field" aria-label="Block ends"') + '</div>';
+  b += chk('f-imp', t.important, 'Important') + chk('f-someday', t.someday, 'Someday', 'No day and no deadline. Kept in its own list.');
+  b += fld('Note', '<textarea id="f-notes">' + esc(t.notes) + '</textarea>');
+  if (t.done) b += '<div class="note">Ticked off ' + esc(label(C.londonDate(t.done))) + '.</div>';
+  b += ERRBOX + '<div class="btnrow"><button class="btn go wide" data-act="save-task" data-id="' + id + '">Save</button><button class="btn" data-act="tick" data-id="' + id + '">' + (t.done ? 'Untick' : 'Tick off') + '</button>'
+    + '<button class="btn danger" data-act="delete" data-id="' + id + '">Delete</button>' + (group > 1 ? '<button class="btn danger" data-act="delete-group" data-id="' + id + '">Delete all ' + group + ' of these</button>' : '') + '</div>';
+  return frame(t.due ? 'Deadline' : 'Task', b);
+}
+function saveTask(id){
+  const cur = S().items[id]; if (!cur) return closeSheet();
+  const t = C.settle(cur, nowL().date), title = val('f-title').trim(), someday = val('f-someday');
+  if (!title) return fail('Give it a title.');
+  const plan = val('f-plan') || null, dd = val('f-due') || null, dt = val('f-duet'), est = C.readDuration(val('f-est')), bs = val('f-bs'), be = val('f-be');
+  if (plan && !C.isDate(plan)) return fail('The planned day is not a date.');
+  if (dd && !C.isDate(dd)) return fail('The deadline is not a date.');
+  if (!dd && dt) return fail('A deadline needs a day as well as a time.');
+  if (est === null) return fail('The estimate could not be read. Try 45m, 1h or 1h30.');
+  let block = null;
+  if (bs || be) {
+    const a = C.readClock(bs), z = C.readClock(be);
+    if (a === null || z === null || z <= a) return fail('The time block needs a start and a later end.');
+    if (!plan) return fail('A time block needs a planned day.');
+    block = { start: a, end: z };
+  }
+  const next = Object.assign({}, t, { title, area: val('f-area'), plan: someday ? null : plan, due: someday || !dd ? null : { date: dd, time: dt ? C.readClock(dt) : null },
+    block: someday ? null : block, est, important: val('f-imp'), someday, notes: val('f-notes'), updatedAt: Date.now() });
+  change(s => putItems(s, [next]));
+  closeSheet();
+}
+
+/* ----- editing a one-off event ----- */
+const whenFields = (date, start, end, allDay) => fld('Day', inp('f-date', 'date', date, 'data-hint="h-date"'), '<span id="h-date">' + esc(dateHint(date)) + '</span>')
+  + '<div class="pair">' + fld('Starts', inp('f-start', 'time', allDay ? '' : clockVal(start))) + fld('Ends', inp('f-end', 'time', allDay ? '' : clockVal(end))) + '</div>';
+function readWhen(allDay){
+  const date = val('f-date');
+  if (!C.isDate(date)) return fail('Choose the day.');
+  if (allDay) return { date, start: 0, end: 0 };
+  const a = C.readClock(val('f-start')), z = C.readClock(val('f-end'));
+  if (a === null || z === null) return fail('Give a start and an end time.');
+  if (z <= a) return fail('The end must be after the start.');
+  return { date, start: a, end: z };
+}
+function eventSheet(e){
+  let b = fld('Title', inp('f-title', 'text', e.title, 'autocomplete="off"')) + whenFields(e.date, e.start, e.end, e.allDay) + chk('f-allday', e.allDay, 'All day')
+    + fld('Place', inp('f-place', 'text', e.place, 'autocomplete="off"')) + fld('Area', areaSelect(e.area))
+    + chk('f-routine', e.routine, 'Part of the weekly timetable', 'Shows in the list for today and tomorrow only, and gets no dot on the term grid.')
+    + fld('Note', '<textarea id="f-notes">' + esc(e.notes) + '</textarea>');
+  b += ERRBOX + '<div class="btnrow"><button class="btn go wide" data-act="save-event" data-id="' + esc(e.id) + '">Save</button><button class="btn danger" data-act="delete" data-id="' + esc(e.id) + '">Delete</button></div>';
+  return frame('Event', b);
+}
+function saveEvent(id){
+  const cur = S().items[id]; if (!cur) return closeSheet();
+  const title = val('f-title').trim(), allDay = val('f-allday');
+  if (!title) return fail('Give it a title.');
+  const w = readWhen(allDay); if (!w) return false;
+  change(s => putItems(s, [Object.assign({}, cur, w, { title, allDay, place: val('f-place').trim(), area: val('f-area'), routine: val('f-routine'), notes: val('f-notes'), updatedAt: Date.now() })]));
+  closeSheet();
+}
+
+/* ----- editing a repeat: one of its times, or the whole of it ----- */
+function occurrenceSheet(s, orig){
+  const o = C.occurrence(s, orig); if (!o) { return seriesSheet(s); }
+  const id = esc(s.id), og = esc(orig);
+  let b = '<div class="note">One of ' + plural(C.seriesOccurrences(s).length, 'time') + ': ' + esc(seriesWords(s)) + '.</div>'
+    + fld('Title', inp('f-title', 'text', o.title, 'autocomplete="off"')) + whenFields(o.date, o.start, o.end, false) + fld('Place', inp('f-place', 'text', o.place, 'autocomplete="off"'))
+    + fld('Note', '<textarea id="f-notes">' + esc(o.notes) + '</textarea>') + ERRBOX;
+  b += '<div class="btnrow"><button class="btn go wide" data-act="occ-save" data-id="' + id + '" data-orig="' + og + '" data-all="">Save for this one</button>'
+    + '<button class="btn wide" data-act="occ-save" data-id="' + id + '" data-orig="' + og + '" data-all="1">Save for this and all later ones</button></div>';
+  b += '<div class="sec">Not going ahead</div><div class="btnrow" style="margin-top:0"><button class="btn danger wide" data-act="occ-cancel" data-id="' + id + '" data-orig="' + og + '" data-all="">Not happening this time</button>'
+    + '<button class="btn danger wide" data-act="occ-cancel" data-id="' + id + '" data-orig="' + og + '" data-all="1">Remove this and all later ones</button></div>';
+  b += '<div class="sec">The whole repeat</div><div class="btnrow" style="margin-top:0"><button class="btn wide" data-act="open-series" data-id="' + id + '">Edit the days, weeks and times</button></div>';
+  return frame('One time of a repeat', b);
+}
+function occurrenceSave(id, orig, all){
+  const s = S().items[id]; if (!s) return closeSheet();
+  const o = C.occurrence(s, orig), title = val('f-title').trim();
+  if (!title) return fail('Give it a title.');
+  const w = readWhen(false); if (!w) return false;
+  // Only what he actually changed is recorded, so later changes to the whole repeat still reach this one.
+  const ch = {}, place = val('f-place').trim(), notes = val('f-notes');
+  if (w.date !== o.date) ch.date = w.date;
+  if (w.start !== o.start || w.end !== o.end) { ch.start = w.start; ch.end = w.end; }
+  if (title !== o.title) ch.title = title;
+  if (place !== o.place) ch.place = place;
+  if (notes !== o.notes) ch.notes = notes;
+  if (!Object.keys(ch).length) return closeSheet();
+  const t = Date.now();
+  if (all) { const parts = C.splitSeries(s, orig, ch, C.newId(), t).filter(Boolean); change(st => putItems(st, parts)); }
+  else change(st => putItems(st, [C.withException(s, orig, ch, t)]));
+  closeSheet();
+}
+function occurrenceCancel(id, orig, all){
+  const s = S().items[id]; if (!s) return closeSheet();
+  const t = Date.now();
+  change(st => putItems(st, all ? C.splitSeries(s, orig, { cancelled: true }, C.newId(), t).filter(Boolean) : [C.withException(s, orig, { cancelled: true }, t)]));
+  closeSheet();
+  toast(all ? 'Removed from then on' : 'Not happening that time', () => change(st => putItems(st, [Object.assign({}, s, { updatedAt: Date.now() })])));
+}
+function seriesSheet(s){
+  const id = esc(s.id);
+  let b = fld('Title', inp('f-title', 'text', s.title, 'autocomplete="off"'));
+  b += '<div class="flabel" style="margin-top:12px">Days</div><div class="dayset">' + C.WD.map((d, i) => '<label><input type="checkbox" id="f-day' + i + '"' + (s.days.indexOf(i) >= 0 ? ' checked' : '') + ' aria-label="' + C.WDL[i] + '">' + d.slice(0, 2) + '</label>').join('') + '</div>';
+  b += '<div class="pair">' + fld('Term', '<select id="f-term">' + C.TERMS.map(t => '<option value="' + t.id + '"' + (t.id === s.term ? ' selected' : '') + '>' + t.name + ' ' + t.year + '</option>').join('') + '</select>')
+    + fld('Weeks', inp('f-weeks', 'text', C.weeksText(s.weeks), 'placeholder="1-8" autocomplete="off" inputmode="text"')) + '</div>';
+  b += '<div class="pair">' + fld('Starts', inp('f-start', 'time', clockVal(s.start))) + fld('Ends', inp('f-end', 'time', clockVal(s.end))) + '</div>';
+  b += fld('Place', inp('f-place', 'text', s.place, 'autocomplete="off"')) + fld('Area', areaSelect(s.area))
+    + chk('f-routine', s.routine, 'Part of the weekly timetable', 'Shows in the list for today and tomorrow only, and gets no dot on the term grid.')
+    + fld('Note', '<textarea id="f-notes">' + esc(s.notes) + '</textarea>');
+  const changed = Object.keys(s.exceptions || {}).length;
+  if (changed) b += '<div class="note">' + plural(changed, 'time') + ' of it ' + (changed === 1 ? 'has' : 'have') + ' been changed or cancelled on its own. Those stay as they are where the day still exists.</div>';
+  b += ERRBOX + '<div class="btnrow"><button class="btn go wide" data-act="save-series" data-id="' + id + '">Save</button><button class="btn danger" data-act="delete" data-id="' + id + '">Delete every time</button></div>';
+  return frame('Repeat: ' + plural(C.seriesOccurrences(s).length, 'time'), b);
+}
+function saveSeries(id){
+  const cur = S().items[id]; if (!cur) return closeSheet();
+  const title = val('f-title').trim(), days = [0, 1, 2, 3, 4, 5, 6].filter(i => val('f-day' + i)), weeks = C.readWeeks(val('f-weeks')), a = C.readClock(val('f-start')), z = C.readClock(val('f-end'));
+  if (!title) return fail('Give it a title.');
+  if (!days.length) return fail('Choose at least one day.');
+  if (!weeks) return fail('The weeks could not be read. Try 1-8, or 1, 2, 4-8.');
+  if (a === null || z === null || z <= a) return fail('Give a start time and a later end time.');
+  const next = Object.assign({}, cur, { title, days, weeks, term: val('f-term'), start: a, end: z, place: val('f-place').trim(), area: val('f-area'), routine: val('f-routine'), notes: val('f-notes'), updatedAt: Date.now() });
+  // An exception only makes sense for a day the repeat still falls on.
+  const still = new Set(C.seriesDates(next)), ex = {};
+  for (const d of Object.keys(cur.exceptions || {})) if (still.has(d)) ex[d] = cur.exceptions[d];
+  next.exceptions = ex;
+  change(s => putItems(s, [next]));
+  closeSheet();
+}
+
+/* ----- Settings ----- */
+function settingsSheet(){
+  const s = S(), st = s.settings || {}, code = Device.code(), env = Sync.env();
+  const pick = (k, opts) => '<div class="seg" role="group">' + opts.map(o => '<button data-act="set" data-k="' + k + '" data-v="' + o[0] + '" aria-pressed="' + ((st[k] || opts[1][0]) === o[0]) + '">' + o[1] + '</button>').join('') + '</div>';
+  // The reminder sits here, at the top of Settings, because this is where tinkering happens.
+  let b = '<label class="f" style="margin-top:4px"><span>A reminder to yourself</span>' + inp('s-motto', 'text', st.motto == null ? '' : st.motto, 'data-set="motto" autocomplete="off"') + '<small>Shown beside today once everything planned for it is ticked off. Leave it empty to show nothing.</small></label>';
+  b += '<div class="sec">Sync</div><div class="note" style="margin-top:0">' + esc(C.syncStatus(App.sync, Date.now(), env)) + '.' + (code ? ' This device calls itself <b>' + esc(Device.id()) + '</b>.' : '') + '</div>';
+  const skew = C.clockSkewMessage(App.sync.skewMs); if (skew) b += '<div class="error">' + esc(skew) + '</div>';
+  b += code ? '<div class="note">Code on this device: <b class="tn">' + esc(code) + '</b>. Enter the same code on your other device.</div>' : '<div class="note">No code on this device. Enter the one from your other device, or make a new one.</div>';
+  b += '<div class="addrow" style="margin-top:8px"><input id="s-code" type="text" placeholder="XXXXX-XXXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Sync code"><button class="btn" data-act="code-save">Use</button></div>';
+  b += '<div id="f-error" class="error" role="alert"></div><div class="btnrow" style="margin-top:8px">' + (code ? '<button class="btn go" data-act="sync-now">Sync now</button>' : '<button class="btn" data-act="code-new">Make a new code</button>') + '</div>';
+  b += '<div class="sec">Look</div>' + pick('theme', [['glass', 'Glass'], ['steel', 'Steel'], ['slate', 'Slate']]) + '<div style="height:8px"></div>' + pick('size', [['compact', 'Compact'], ['standard', 'Standard'], ['roomy', 'Roomy']]);
+  b += '<div class="sec">The week’s target</div>' + fld('Hours of work a week', inp('s-weekly', 'number', Math.round((st.weeklyTargetMin || 0) / 6) / 10, 'data-set="weekly" min="1" max="100" step="1" inputmode="decimal"'), 'What the ring on this week’s heading fills towards.');
+  b += '<div class="sec">Areas</div><div class="panel" style="padding:2px 12px">' + areaList().map((a, i, all) => '<div class="arearow">'
+    + '<input class="field" type="text" value="' + esc(a.name) + '" data-area="' + esc(a.id) + '" data-f="name" aria-label="Name of area" autocomplete="off">'
+    + '<button class="icon" data-act="area-move" data-id="' + esc(a.id) + '" data-dir="-1" aria-label="Move ' + esc(a.name) + ' up"' + (i ? '' : ' disabled') + ' style="transform:rotate(90deg)">' + ICON.prev + '</button>'
+    + '<button class="icon" data-act="area-move" data-id="' + esc(a.id) + '" data-dir="1" aria-label="Move ' + esc(a.name) + ' down"' + (i < all.length - 1 ? '' : ' disabled') + ' style="transform:rotate(90deg)">' + ICON.next + '</button>'
+    + '<div class="sw">' + C.AREA_COLOURS.map(c => '<button class="swatch" data-act="area-colour" data-id="' + esc(a.id) + '" data-v="' + c + '" aria-pressed="' + (a.colour === c) + '" aria-label="Colour ' + (C.AREA_COLOURS.indexOf(c) + 1) + ' of 6"><i style="background:var(--a-' + c + ')"></i></button>').join('')
+    + '<label class="check" style="margin:0 0 0 6px"><input type="checkbox" data-area="' + esc(a.id) + '" data-f="work"' + (a.work ? ' checked' : '') + '><span>Counts as work</span></label></div></div>').join('') + '</div>';
+  const trash = C.recentlyDeleted(s);
+  b += '<div class="sec">Recently deleted</div>' + (trash.length ? '<div class="panel">' + trash.map(it => '<div class="r2" style="cursor:default"><span class="lead"></span><span class="ttl">' + (esc(it.title) || 'Untitled') + '</span><span class="sub"><span>deleted ' + esc(label(C.londonDate(it.deletedAt), { week: false })) + '</span></span>'
+    + '<span class="trail"><button class="sbtn" data-act="restore" data-id="' + esc(it.id) + '">Restore</button></span></div>').join('') + '</div>' : '<div class="note" style="margin-top:0">Nothing. Anything you delete can be brought back from here for 30 days.</div>');
+  // A backup is everything in one file. Sync is the working copy between his devices; this is the spare.
+  b += '<div class="sec">Backup</div><div class="note" style="margin-top:0">A backup file holds everything in Fasti. A calendar file holds every event and deadline, for Apple Calendar or any other calendar; it is a copy to look at elsewhere and cannot be brought back in.</div>'
+    + '<div class="btnrow" style="margin-top:8px"><button class="btn" data-act="export-data">Save a backup file</button><button class="btn" data-act="export-ics">Save a calendar file</button><button class="btn" data-act="import-pick">Bring in a backup file</button></div>'
+    + '<input id="s-file" type="file" accept="application/json,.json" aria-label="Backup file to bring in" hidden>';
+  const bk = UI.sheet && UI.sheet.backup;
+  if (bk) b += '<div class="banner" style="display:block;padding:10px 12px"><div>' + esc((bk.exportedAt ? 'Backup of ' + label(C.londonDate(bk.exportedAt), { week: false }) + ', ' + C.fmtTime(C.londonNow(bk.exportedAt).min) : 'This backup')
+      + ' holds ' + plural(bk.items, 'item') + ', ' + (bk.fresh ? bk.fresh + ' of them not on this device' : 'all of them already on this device') + '.' + (bk.left ? ' ' + (bk.left === 1 ? '1 entry' : bk.left + ' entries') + ' could not be read and will be left out.' : ''))
+      + '</div><div class="note">Bringing it in adds what is missing. Where this device and the backup both have something, whichever was changed later is kept, so nothing done since the backup is undone.</div>'
+      + '<div class="btnrow" style="margin-top:8px"><button class="btn go" data-act="import-go">Bring it in</button><button class="btn" data-act="import-cancel">Cancel</button></div></div>';
+  b += '<div id="b-error" class="error" role="alert"></div>';
+  b += '<div class="sec">About</div><div class="note" style="margin-top:0">Oxford term dates are built in up to Trinity 2028. After that, dates show the calendar date only.</div><div class="note">Build ' + BUILD + '</div>';
+  if (DEV) {
+    const d = lsGet(KEY.dev), ex = Object.keys(s.items).filter(id => id.indexOf('ex:') === 0 && !s.items[id].deleted).length;
+    b += '<div class="sec">For testing on this Mac only</div><div class="note" style="margin-top:0">These appear only on localhost, never in the published app.</div>'
+      + '<div class="btnrow" style="margin-top:8px"><button class="btn" data-act="example-fill">Fill with an example term</button>' + (ex ? '<button class="btn danger" data-act="example-clear">Clear the example (' + ex + ')</button>' : '') + '</div>'
+      + '<label class="check"><input type="checkbox" data-act="dev-sw"' + (d.sw ? ' checked' : '') + '><span>Offline file switched on<small>Reload to apply.</small></span></label>'
+      + '<label class="check"><input type="checkbox" data-act="dev-dead"' + (d.endpoint ? ' checked' : '') + '><span>Pretend the sync server cannot be reached</span></label>'
+      + '<div class="note">This page load: ' + App.stats.fetches + ' fetches, ' + App.stats.pushes + ' pushes. Today from this device: ' + (App.sync.pushCount || 0) + ' pushes.</div>';
+  }
+  return frame('Settings', b);
+}
+// Hand him a file. On the Mac it goes to Downloads. An app on the iPhone's home screen cannot download, so there it
+// goes to the share sheet, where "Save to Files" keeps it.
+function saveFile(name, text, type){
+  const blob = new Blob([text], { type }), file = typeof File === 'function' ? new File([blob], name, { type }) : null;
+  if (!MAC && file && navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file] }).catch(() => {}); return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+function setArea(id, fields){
+  change(s => { const a = s.areas[id]; if (!a) return s; const areas = Object.assign({}, s.areas); areas[id] = Object.assign({}, a, fields, { updatedAt: Date.now() }); return Object.assign({}, s, { areas }); });
+}
+
+/* ================= 10. What taps and keys do ================= */
+function act(b, e){
+  const a = b.dataset.act, id = b.dataset.id, it = id && S().items[id], t = Date.now(), today = nowL().date;
+  if (a === 'tab') setTab(b.dataset.k);
+  else if (a === 'lens') { UI.lens = b.dataset.k; saveUI(); render(); }
+  else if (a === 'toggle') { UI[b.dataset.k] = !UI[b.dataset.k]; render(); }
+  else if (a === 'period') { UI.period = b.dataset.k || null; UI.selDay = null; UI.selWeek = null; UI.scroll['m:term:term'] = 0; render(); if (!MAC) window.scrollTo(0, 0); }
+  // The Mac's week page: the arrows carry the Sunday to go to; Today carries none.
+  else if (a === 'week') { if (b.dataset.k) { UI.week = b.dataset.k === C.sundayOf(today) ? null : b.dataset.k; UI.cur = null; render(); } else goToday(); }
+  else if (a === 'gowk') { UI.week = b.dataset.d === C.sundayOf(today) ? null : b.dataset.d; setTab('week'); }
+  // A day clicked on the Mac's term page opens in the list: scrolled to, if the list shows it, and otherwise put at the top.
+  else if (a === 'pickday') {
+    UI.q = ''; UI.lens = 'date'; setTab('every'); UI.pick = b.dataset.d; UI.scroll['m:every:list'] = 0; render();
+    const h = document.querySelector('#body .dayhead[data-date="' + b.dataset.d + '"]'); if (h) h.scrollIntoView({ block: 'start' });
+  }
+  else if (a === 'pickclose') { UI.pick = null; render(); }
+  // An empty place on the week grid: the add bar opens with that day and half-hour already in it, and the caret before them for the title.
+  else if (a === 'slot') {
+    if (e.target !== b) return;
+    const min = Math.max(0, Math.min(1410, Math.floor((e.clientY - b.getBoundingClientRect().top) / UI.hh * 2) * 30));
+    openSheet({ kind: 'add', text: ' ' + C.slotText(b.dataset.d, min, today), caret: 0 });
+  }
+  else if (a === 'occ-move') {
+    const sh = UI.sheet, ser = sh && sh.kind === 'askocc' ? S().items[sh.id] : null;
+    if (ser) change(st => putItems(st, b.dataset.all ? C.splitSeries(ser, sh.orig, sh.ch, C.newId(), t).filter(Boolean) : [C.withException(ser, sh.orig, sh.ch, t)]));
+    closeSheet();
+  }
+  else if (a === 'selday') { UI.selDay = b.dataset.d; UI.selWeek = null; render(); }
+  else if (a === 'selweek') { UI.selWeek = UI.selWeek === b.dataset.d ? null : b.dataset.d; UI.selDay = null; render(); }
+  else if (a === 'add') openSheet({ kind: 'add', text: '' });
+  else if (a === 'settings') openSheet({ kind: 'settings' });
+  else if (a === 'close') closeSheet();
+  else if (a === 'reload') location.reload();
+  else if (a === 'open') openItem(id);
+  else if (a === 'open-series') openSheet({ kind: 'edit', id });
+  else if (a === 'tick' && it) { change(s => putItems(s, [it.done ? C.untick(it, t) : C.tick(it, t)])); if (UI.sheet) closeSheet(); }
+  else if (a === 'redate' && it) openItem(id, 'f-due');
+  else if (a === 'letgo' && it) { change(s => putItems(s, [C.drop(it, t)])); toast('Let go: ' + it.title, () => change(s => putItems(s, [C.undrop(S().items[id], Date.now())]))); }
+  else if (a === 'delete' && it) { change(s => putItems(s, [C.remove(it, t)])); closeSheet(); toast('Deleted', () => change(s => putItems(s, [C.restore(S().items[id], Date.now())]))); }
+  else if (a === 'delete-group' && it) {
+    const all = Object.keys(S().items).map(k => S().items[k]).filter(x => x && !x.deleted && x.group === it.group);
+    change(s => putItems(s, all.map(x => C.remove(x, t)))); closeSheet();
+    toast('Deleted ' + all.length, () => change(s => putItems(s, all.map(x => C.restore(S().items[x.id], Date.now())))));
+  }
+  else if (a === 'restore' && it) { change(s => putItems(s, [C.restore(it, t)])); renderSheet(); }
+  else if (a === 'save-task') saveTask(id);
+  else if (a === 'save-event') saveEvent(id);
+  else if (a === 'save-series') saveSeries(id);
+  else if (a === 'occ-save') occurrenceSave(id, b.dataset.orig, !!b.dataset.all);
+  else if (a === 'occ-cancel') occurrenceCancel(id, b.dataset.orig, !!b.dataset.all);
+  else if (a === 'quick') {
+    const q = b.dataset.q, sun = C.sundayOf(today);
+    if (q === 'Someday') { $('f-someday').checked = true; }
+    else { $('f-someday').checked = false; $('f-plan').value = q === 'Today' ? today : q === 'Tomorrow' ? C.addDays(today, 1) : C.addDays(sun, 7); $('h-plan').textContent = dateHint($('f-plan').value); }
+  }
+  else if (a === 'add-go') addGo();
+  else if (a === 'unread') {
+    // Un-reading a word is the same as putting quotation marks round it, done for him.
+    const el = $('add-in'), i = +b.dataset.i, j = +b.dataset.j;
+    el.value = el.value.slice(0, i) + '"' + el.value.slice(i, j) + '"' + el.value.slice(j);
+    addPreview(); el.focus();
+  }
+  else if (a === 'toast-undo') { const u = UI.toastUndo; $('toast').hidden = true; UI.toastUndo = null; if (u) u(); }
+  else if (a === 'undo-import') { change(s => C.undoImport(s, id, t)); dismissImport(id); }
+  else if (a === 'dismiss-import') { dismissImport(id); render(); }
+  else if (a === 'set') { change(s => C.withSetting(s, b.dataset.k, b.dataset.v, t)); renderSheet(); }
+  else if (a === 'area-colour') { setArea(id, { colour: b.dataset.v }); renderSheet(); }
+  else if (a === 'area-move') {
+    const list = areaList(), i = list.findIndex(x => x.id === id), j = i + +b.dataset.dir;
+    if (i >= 0 && j >= 0 && j < list.length) { const oi = list[i].order, oj = list[j].order; setArea(list[i].id, { order: oj }); setArea(list[j].id, { order: oi }); renderSheet(); }
+  }
+  else if (a === 'code-save') {
+    const raw = $('s-code').value;
+    if (!C.normaliseSyncCode(raw)) return fail('That is not a sync code. It is ten letters and digits, like ABCDE-FGH23.');
+    if (Device.code() && Device.code() !== C.normaliseSyncCode(raw) && !window.confirm('This device already has a sync code.\n\nOK = replace it. This device will stop syncing with anything still on the old code.\nCancel = keep the code it has.')) return;
+    Sync.setCode(raw); renderSheet();
+  }
+  else if (a === 'code-new') { Sync.setCode(C.syncCodeFrom(crypto.getRandomValues(new Uint8Array(10)))); renderSheet(); }
+  else if (a === 'sync-now') { Sync.now(); setTimeout(() => { if (UI.sheet && UI.sheet.kind === 'settings') renderSheet(); }, 2500); }
+  else if (a === 'export-data') { saveFile('fasti-backup-' + today + '.json', JSON.stringify(C.makeBackup(S(), t)), 'application/json'); toast('Backup file saved'); }
+  else if (a === 'export-ics') { saveFile('fasti-' + today + '.ics', C.toICS(S(), t), 'text/calendar'); toast('Calendar file saved'); }
+  else if (a === 'import-pick') $('s-file').click();
+  else if (a === 'import-go') {
+    const bk = UI.sheet && UI.sheet.backup; if (!bk) return;
+    const res = C.importBackup(S(), bk.state);
+    change(() => res.state); UI.sheet.backup = null; renderSheet();
+    toast('Backup brought in' + (res.fresh ? ': ' + plural(res.fresh, 'item') + ' added' : ': nothing was missing'));
+  }
+  else if (a === 'import-cancel') { if (UI.sheet) UI.sheet.backup = null; renderSheet(); }
+  else if (a === 'dev-sw') { const d = lsGet(KEY.dev); d.sw = b.checked; lsSet(KEY.dev, d); }
+  else if (a === 'dev-dead') { const d = lsGet(KEY.dev); if (b.checked) d.endpoint = 'http://127.0.0.1:9'; else delete d.endpoint; lsSet(KEY.dev, d); }
+  else if (a === 'example-fill' && DEV) {
+    const go = () => { change(s => putItems(s, window.FastiExample(C, Date.now()))); renderSheet(); };
+    if (window.FastiExample) go(); else { const sc = document.createElement('script'); sc.src = 'demo/example-data.js'; sc.onload = go; document.head.appendChild(sc); }
+  }
+  else if (a === 'example-clear' && DEV) { change(s => putItems(s, Object.keys(s.items).filter(k => k.indexOf('ex:') === 0 && !s.items[k].deleted).map(k => C.remove(s.items[k], t)))); renderSheet(); }
+}
+function dismissImport(id){ const u = lsGet(KEY.ui); u.arrived = (u.arrived || []).filter(x => x !== id); lsSet(KEY.ui, u); }
+function setTab(k){
+  if (MAC) { if (UI.mtab !== k) { UI.pick = null; UI.cur = null; } UI.mtab = k; saveUI(); render(); }
+  else { UI.scroll[UI.tab] = window.scrollY; UI.tab = k; UI.cur = null; saveUI(); render(); restoreScroll(); }
+}
+// T, or the Today button: back to now, whichever page is showing.
+function goToday(){
+  UI.cur = null;
+  if (page() === 'week') {
+    UI.week = null; delete UI.scroll['m:week:week']; render();
+    // The grid opens at 08:00. If now is outside what that shows, bring it into view.
+    const sc = $('wscroll'), y = nowL().min / 60 * UI.hh, top = sc.querySelector('.wtop').offsetHeight;
+    if (y < sc.scrollTop || y > sc.scrollTop + sc.clientHeight - top) sc.scrollTop = Math.max(0, y - (sc.clientHeight - top) / 2);
+  }
+  else if (page() === 'term') { UI.period = null; UI.selDay = null; UI.selWeek = null; UI.scroll['m:term:term'] = 0; render(); if (!MAC) window.scrollTo(0, 0); }
+  else { UI.q = ''; UI.pick = null; UI.scroll['m:every:list'] = 0; if ($('q')) $('q').value = ''; render(); if (!MAC) window.scrollTo(0, 0); }
+}
+
+/* ----- dragging on the Mac's week grid: a task from the side onto the hours, a box to another time or day,
+   a box's lower edge to change its length. The arithmetic and what gets written are FastiCore's; this only
+   follows the pointer. Nothing is redrawn while a drag is under way (see render). ----- */
+const Drag = (() => {
+  let d = null;
+  const gridTop = sc => sc.getBoundingClientRect().top + sc.querySelector('.wtop').offsetHeight;
+  function colAt(x, y){
+    const sc = $('wscroll'); if (!sc) return null;
+    const r = sc.getBoundingClientRect();
+    if (x < r.left || x > r.right || y < gridTop(sc) || y > r.bottom) return null;
+    return Array.from(sc.querySelectorAll('.dcol')).find(c => { const b = c.getBoundingClientRect(); return x >= b.left && x < b.right; }) || null;
+  }
+  const minuteAt = (col, y) => (y - col.getBoundingClientRect().top) / UI.hh * 60;
+  const inside = (el, x, y) => { const r = el.getBoundingClientRect(); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; };
+  function show(el, b){
+    el.style.top = 'calc(var(--hh)*' + (b.start / 60).toFixed(4) + ')'; el.style.height = 'calc(var(--hh)*' + ((b.end - b.start) / 60).toFixed(4) + ' - 2px)';
+    const w = el.querySelector('.when'); if (w) w.textContent = C.fmtTime(b.start) + '–' + C.fmtTime(b.end);
+  }
+  function down(e){
+    if (!MAC || UI.sheet || e.button !== 0 || e.isPrimary === false) return;
+    const el = e.target.closest && e.target.closest('[data-drag]');
+    if (!el || e.target.closest('.tick')) return;
+    const id = el.dataset.id, at = id.lastIndexOf('@'), own = S().items[id];
+    d = { el, id: own ? id : id.slice(0, at), orig: own ? null : id.slice(at + 1), box: el.dataset.drag === 'box', size: !!e.target.closest('.grip'), x: e.clientX, y: e.clientY, px: e.clientX, py: e.clientY,
+      pid: e.pointerId, live: false, ghost: null, chip: null, target: null, next: null, auto: null, onSide: false };
+  }
+  function begin(){
+    const it = S().items[d.id];
+    if (!it || it.deleted) { d = null; return false; }
+    d.live = true; d.kind = it.kind; UI.drag = true; hideTip(); document.body.classList.add('dragging');
+    try { d.el.setPointerCapture(d.pid); } catch (err) {}
+    if (d.box) {
+      d.block = { start: +d.el.dataset.s, end: +d.el.dataset.e }; d.date = d.el.parentElement.dataset.d;
+      d.grab = minuteAt(d.el.parentElement, d.y) - d.block.start;
+    } else { d.block = C.dropBlock(it, 0); d.grab = 0; d.date = null; }
+    if (d.size) { d.ghost = d.el; d.el.classList.remove('short'); return true; }
+    if (d.box) { d.ghost = d.el.cloneNode(true); d.el.classList.add('lifted'); }
+    else { d.ghost = document.createElement('div'); d.ghost.className = 'blk task'; d.ghost.style.setProperty('--ac', 'var(--a-' + areaOf(it.area).colour + ')'); d.ghost.innerHTML = '<b>' + (esc(it.title) || 'Untitled') + '</b><span class="when tn"></span>'; }
+    d.ghost.classList.add('ghost'); d.ghost.classList.remove('short', 'cur'); d.ghost.removeAttribute('data-act'); d.ghost.removeAttribute('data-drag'); d.ghost.removeAttribute('tabindex');
+    d.ghost.style.left = '2px'; d.ghost.style.width = 'calc(100% - 5px)';
+    d.chip = document.createElement('div'); d.chip.className = 'dragchip'; d.chip.textContent = it.title || 'Untitled'; d.chip.hidden = true; document.body.appendChild(d.chip);
+    return true;
+  }
+  function place(){
+    if (d.size) { d.target = d.date; d.next = C.resizeBlock(d.block, minuteAt(d.el.parentElement, d.py)); show(d.el, d.next); return; }
+    const col = colAt(d.px, d.py), side = $('wside');
+    // An undone task cannot be planned for a day already gone: it would only be carried straight back to today.
+    const ok = !!col && !(d.kind === 'task' && col.dataset.d < nowL().date);
+    d.onSide = !ok && d.box && d.kind === 'task' && !!side && inside(side, d.px, d.py);
+    if (side) side.classList.toggle('drop', d.onSide);
+    d.chip.hidden = ok; d.chip.style.left = d.px + 14 + 'px'; d.chip.style.top = d.py + 14 + 'px';
+    if (!ok) { d.target = null; d.ghost.remove(); return; }
+    d.target = col.dataset.d; d.next = C.moveBlock(d.block, minuteAt(col, d.py) - d.grab);
+    if (d.ghost.parentElement !== col) col.appendChild(d.ghost);
+    show(d.ghost, d.next);
+  }
+  function move(e){
+    if (!d || (d.pid !== e.pointerId)) return;
+    if (!d.live) { if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 5 || !begin()) return; }
+    e.preventDefault();
+    d.px = e.clientX; d.py = e.clientY; place();
+    // Near the top or bottom of the hours, the grid scrolls by itself so a box can be taken to the early morning or the late evening.
+    const sc = $('wscroll'), r = sc.getBoundingClientRect(), dir = d.py > r.bottom - 34 ? 1 : (d.py < gridTop(sc) + 34 && d.py > r.top) ? -1 : 0;
+    if (!dir) { clearInterval(d.auto); d.auto = null; }
+    else if (!d.auto || d.dir !== dir) { clearInterval(d.auto); d.dir = dir; d.auto = setInterval(() => { if (!d) return; sc.scrollTop += dir * 12; place(); }, 30); }
+  }
+  function end(commit){
+    const x = d; d = null;
+    if (!x || !x.live) return;
+    clearInterval(x.auto); UI.drag = false; document.body.classList.remove('dragging');
+    if (x.chip) x.chip.remove();
+    if (x.ghost && x.ghost !== x.el) x.ghost.remove();
+    if (commit) write(x);
+    render();
+  }
+  function write(x){
+    const t = Date.now(), today = nowL().date, it = S().items[x.id];
+    if (!it || it.deleted) return;
+    const undo = () => change(s => putItems(s, [Object.assign({}, it, { updatedAt: Date.now() })]));
+    if (!x.target) {
+      if (x.onSide && it.kind === 'task') { change(s => putItems(s, [C.unblockTask(it, today, t)])); toast('Time taken off: ' + it.title, undo); }
+      return;
+    }
+    const b = x.next, same = (date, a, z) => date === x.target && a === b.start && z === b.end;
+    if (it.kind === 'task') {
+      const cur = C.settle(it, today);
+      if (cur.block && same(cur.plan, cur.block.start, cur.block.end)) return;
+      change(s => putItems(s, [C.blockTask(it, x.target, b, today, t)]));
+      toast(label(x.target, { week: false }) + ', ' + C.fmtTime(b.start) + '–' + C.fmtTime(b.end) + ': ' + it.title, undo);
+    } else if (it.kind === 'event') {
+      if (same(it.date, it.start, it.end)) return;
+      change(s => putItems(s, [C.moveEvent(it, x.target, b, t)]));
+      toast(label(x.target, { week: false }) + ', ' + C.fmtTime(b.start) + '–' + C.fmtTime(b.end) + ': ' + it.title, undo);
+    } else if (it.kind === 'series') {
+      // One time of a repeat: ask whether it is this one, or all future ones.
+      const o = C.occurrence(it, x.orig), ch = o ? C.occurrenceChange(o, x.target, b) : {};
+      if (Object.keys(ch).length) openSheet({ kind: 'askocc', id: it.id, orig: x.orig, ch });
+    }
+  }
+  document.addEventListener('pointerdown', down);
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', () => {
+    if (d && d.live) {
+      // The click that follows a drag must not open the editor.
+      const stop = ev => { ev.stopPropagation(); ev.preventDefault(); };
+      window.addEventListener('click', stop, true); setTimeout(() => window.removeEventListener('click', stop, true), 80);
+    }
+    end(true);
+  });
+  document.addEventListener('pointercancel', () => end(false));
+  return { active: () => !!(d && d.live), cancel: () => end(false) };
+})();
+
+document.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b && !b.disabled) act(b, e); });
+document.addEventListener('keydown', e => {
+  const el = e.target;
+  if (e.key === 'Escape') {
+    if (Drag.active()) Drag.cancel();
+    else if (UI.sheet) closeSheet();
+    else if (el.id === 'q') { UI.q = ''; el.value = ''; el.blur(); render(); }
+    else if (UI.cur || UI.pick) { UI.cur = null; UI.pick = null; render(); }
+    return;
+  }
+  if (e.key === 'Enter' && el.id === 'add-in') { e.preventDefault(); addGo(); return; }
+  if ((e.key === 'Enter' || e.key === ' ') && el.matches && el.matches('[role="button"][data-act]')) { e.preventDefault(); act(el, e); return; }
+  // The shortcuts. Not while typing, not while a sheet is open, and not with a key held that belongs to the browser.
+  if (UI.sheet || e.metaKey || e.ctrlKey || e.altKey || (el.matches && el.matches('input, textarea, select'))) return;
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key, cur = UI.cur && S().items[UI.cur.id];
+  if (k === 'n') openSheet({ kind: 'add', text: '' });
+  else if (k === '/') { if (!MAC && UI.tab !== 'every') setTab('every'); $('q').focus(); $('q').select(); }
+  else if (k === 'j') moveCur(1);
+  else if (k === 'k') moveCur(-1);
+  else if (k === 'x' && cur && cur.kind === 'task') change(s => putItems(s, [cur.done ? C.untick(cur, Date.now()) : C.tick(cur, Date.now())]));
+  else if ((k === 'e' || (k === 'Enter' && !(el.closest && el.closest('button, a')))) && UI.cur) openItem(UI.cur.id);
+  else if (k === 't') goToday();
+  else if (MAC && (k === '1' || k === '2' || k === '3')) setTab(['week', 'every', 'term'][+k - 1]);
+  else if (MAC && (k === 'ArrowLeft' || k === 'ArrowRight') && UI.mtab !== 'every') {
+    // Previous and next week; on the term page, the term or vacation before and after.
+    const next = k === 'ArrowRight', b = Array.from(document.querySelectorAll('#body .navrow [aria-label="' + (next ? 'Later' : 'Earlier') + '"]'))[0];
+    if (b && !b.disabled) act(b, e);
+  }
+  else return;
+  e.preventDefault();
+});
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (el.id === 'q') {
+    UI.q = el.value;
+    // On the Mac the search box is in the bar across the top: typing in it from any page shows the results in Everything.
+    if (MAC) { if (UI.mtab !== 'every') { UI.mtab = 'every'; saveUI(); } UI.scroll['m:every:list'] = 0; render(); } else $('body').innerHTML = everyBody();
+  }
+  else if (el.id === 'add-in') addPreview();
+});
+// Hovering a day on the Mac's term page lists everything on it.
+document.addEventListener('mouseover', e => {
+  if (!MAC || UI.drag) return;
+  const c = e.target.closest ? e.target.closest('.tc') : null;
+  if (c === tipCell) return;
+  if (c) { tipCell = c; showTip(c); } else hideTip();
+});
+document.addEventListener('mouseleave', hideTip);
+// Settings boxes save when he leaves them; date boxes say their Oxford week underneath.
+document.addEventListener('change', e => {
+  const el = e.target, t = Date.now();
+  // A backup file chosen in Settings: read it and say what it holds. Nothing is brought in until he says so.
+  if (el.id === 's-file' && el.files && el.files[0]) {
+    el.files[0].text().then(text => {
+      if (!UI.sheet || UI.sheet.kind !== 'settings') return;
+      const r = C.readBackup(text);
+      if (!r.ok) { UI.sheet.backup = null; renderSheet(); const box = $('b-error'); if (box) { box.textContent = r.error; box.scrollIntoView({ block: 'nearest' }); } return; }
+      UI.sheet.backup = Object.assign(r, { fresh: C.importBackup(S(), r.state).fresh });
+      renderSheet();
+      const go = document.querySelector('[data-act="import-go"]'); if (go) go.scrollIntoView({ block: 'center' });
+    }, () => { const box = $('b-error'); if (box) box.textContent = 'That file could not be read.'; });
+    return;
+  }
+  if (el.dataset.hint && $(el.dataset.hint)) $(el.dataset.hint).textContent = el.value ? dateHint(el.value) : (el.id === 'f-due' ? 'No deadline' : 'No day yet');
+  if (el.dataset.set === 'motto') change(s => C.withSetting(s, 'motto', el.value.trim(), t));
+  else if (el.dataset.set === 'weekly') { const h = parseFloat(el.value); if (h >= 1 && h <= 100) change(s => C.withSetting(s, 'weeklyTargetMin', Math.round(h * 60), t)); else el.value = Math.round((S().settings.weeklyTargetMin || 0) / 6) / 10; }
+  else if (el.dataset.area && el.dataset.f === 'name') { const name = el.value.trim(); if (name) setArea(el.dataset.area, { name }); else el.value = areaOf(el.dataset.area).name; }
+  else if (el.dataset.area && el.dataset.f === 'work') setArea(el.dataset.area, { work: el.checked });
+});
+let scrollNote = null;
+window.addEventListener('scroll', () => { if (UI.sheet || MAC) return; clearTimeout(scrollNote); scrollNote = setTimeout(() => { UI.scroll[UI.tab] = window.scrollY; saveUI(); }, 300); }, { passive: true });
+// On the Mac the window does not scroll; the list, the term page and the hours each do. Scrolls do not bubble, so they are caught on the way down.
+document.addEventListener('scroll', e => {
+  const el = e.target;
+  if (!MAC || !el.dataset || !el.dataset.scroll) return;
+  UI.scroll['m:' + UI.mtab + ':' + el.dataset.scroll] = el.id === 'wscroll' ? el.scrollTop / UI.hh : el.scrollTop; hideTip();
+  clearTimeout(scrollNote); scrollNote = setTimeout(saveUI, 300);
+}, { capture: true, passive: true });
+// Crossing 700 px swaps the layout; and the week grid fits its hours to the window's height.
+let resizeNote = null;
+window.addEventListener('resize', () => { clearTimeout(resizeNote); resizeNote = setTimeout(render, 80); });
+
+start();
+</script>
+</body>
+</html>
