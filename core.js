@@ -216,12 +216,16 @@ function newId(){
 // with whatever has already been synced: do not rename them.
 function makeEvent(f){
   return { id: f.id, kind: 'event', title: f.title || '', area: f.area || 'pers', date: f.date, start: f.start, end: f.end,
-    allDay: !!f.allDay, place: f.place || '', notes: f.notes || '', routine: !!f.routine, source: f.source || null, updatedAt: f.updatedAt || 0 };
+    allDay: !!f.allDay, place: f.place || '', notes: f.notes || '', routine: !!f.routine, source: f.source || null, updatedAt: f.updatedAt || 0, ...maybeOf(f) };
 }
+// A maybe: something he might go to. Drawn faint, never a clash, never busy. Stored only when set
+// (`maybe: true`), so an item without it has exactly the shape it always had.
+const maybeOf = f => f && f.maybe ? { maybe: true } : {};
+const withMaybe = (it, on) => { const out = Object.assign({}, it); if (on) out.maybe = true; else delete out.maybe; return out; };
 function makeSeries(f){
   return { id: f.id, kind: 'series', title: f.title || '', area: f.area || 'pers', days: (f.days || []).slice().sort((a, b) => a - b),
     start: f.start, end: f.end, place: f.place || '', term: f.term, weeks: uniqSorted(f.weeks || []), routine: f.routine !== false,
-    notes: f.notes || '', exceptions: f.exceptions || {}, updatedAt: f.updatedAt || 0 };
+    notes: f.notes || '', exceptions: f.exceptions || {}, updatedAt: f.updatedAt || 0, ...maybeOf(f) };
 }
 function makeTask(f){
   return { id: f.id, kind: 'task', title: f.title || '', area: f.area || 'pers', plan: f.plan || null, block: f.block || null,
@@ -270,7 +274,7 @@ function occurrence(s, orig){
   const ex = s.exceptions && s.exceptions[orig];
   if (ex && ex.cancelled) return null;
   const o = { id: s.id + '@' + orig, kind: 'event', series: s.id, orig, title: s.title, area: s.area, date: orig, start: s.start, end: s.end,
-    allDay: false, place: s.place || '', notes: s.notes || '', routine: !!s.routine, changed: false };
+    allDay: false, place: s.place || '', notes: s.notes || '', routine: !!s.routine, changed: false, ...maybeOf(s) };
   if (ex) { for (const k of OCC_FIELDS) if (ex[k] !== undefined) o[k] = ex[k]; o.changed = true; }
   return o;
 }
@@ -398,8 +402,12 @@ const byTime = (a, b) => (a.allDay ? 0 : 1) - (b.allDay ? 0 : 1) || (a.start || 
 // Two timed events clash when each starts before the other ends. All-day
 // events, cancelled occurrences and tasks' time blocks never count.
 const overlap = (a, b) => !a.allDay && !b.allDay && a.start < b.end && b.start < a.end;
+// A maybe never clashes and is never clashed with. It only says, in passing, what firm thing it shares its time with.
 function markClashes(list){
-  return list.map(e => { const o = list.find(x => x !== e && overlap(e, x)); return Object.assign({}, e, { clash: o ? (o.title || 'another event') : null }); });
+  return list.map(e => {
+    const o = e.maybe ? null : list.find(x => x !== e && !x.maybe && overlap(e, x)), with_ = e.maybe ? list.find(x => x !== e && !x.maybe && overlap(e, x)) : null;
+    return Object.assign({}, e, { clash: o ? (o.title || 'another event') : null }, e.maybe ? { sameAs: with_ ? (with_.title || 'another event') : null } : {});
+  });
 }
 // Long gaps between a day's events. Sort by start and track the latest end so
 // far; when the next event starts 90 minutes or more after it, that is a gap.
@@ -408,7 +416,7 @@ function markClashes(list){
 const GAP_MIN = 90;
 function freeGaps(events, o){
   o = o || {};
-  const timed = events.filter(e => !e.allDay).slice().sort(byTime), out = [];
+  const timed = events.filter(e => !e.allDay && !e.maybe).slice().sort(byTime), out = [];      // a maybe never takes up free time
   let end = null, after = null;
   for (const e of timed) {
     if (end !== null && e.start - end >= GAP_MIN && !(o.isToday && e.start <= o.nowMin))
@@ -421,16 +429,17 @@ const freeText = g => g.until ? 'free until ' + fmtTime(g.to) : 'free ' + fmtTim
 
 // The read model. Built once per render from the state and "now", it answers
 // every question a page asks: what is on a day, what is late, how full a week is.
-function view(state, now){
-  const today = now.date, areas = state.areas || {};
+// `o.hideMaybes`: the maybes are left out of everything, and only counted (hiddenOn), so a day can say how many it is not showing.
+function view(state, now, o){
+  const today = now.date, areas = state.areas || {}, hide = !!(o && o.hideMaybes), hidden = new Map();
   const isWork = id => { const a = own(areas, id); return !!(a && !a.deleted && a.work); };
   const events = new Map(), planned = new Map(), due = new Map(), tasks = [], sortedEvents = new Map();
   const push = (m, k, v) => { const a = m.get(k); if (a) a.push(v); else m.set(k, [v]); };
   for (const id of Object.keys(state.items || {})) {
     const it = state.items[id];
     if (!it || it.deleted) continue;
-    if (it.kind === 'event') push(events, it.date, it);
-    else if (it.kind === 'series') { for (const o of seriesOccurrences(it)) push(events, o.date, o); }
+    if (it.kind === 'event') push(hide && it.maybe ? hidden : events, it.date, it);
+    else if (it.kind === 'series') { for (const oc of seriesOccurrences(it)) push(hide && oc.maybe ? hidden : events, oc.date, oc); }
     else if (it.kind === 'task' && !it.dropped) {
       const t = effective(it, today);
       tasks.push(t);
@@ -453,7 +462,7 @@ function view(state, now){
   const dueOn = date => (due.get(date) || []).slice().sort(dueOrder);
   function dayLoad(date){
     let m = 0;
-    for (const e of eventsOn(date)) if (!e.allDay) m += e.end - e.start;
+    for (const e of eventsOn(date)) if (!e.allDay && !e.maybe) m += e.end - e.start;
     for (const t of planned.get(date) || []) m += taskLoad(t);
     return m;
   }
@@ -462,7 +471,7 @@ function view(state, now){
     let m = 0;
     for (let i = 0; i < 7; i++) {
       const d = addDays(sunday, i);
-      for (const e of eventsOn(d)) if (!e.allDay && isWork(e.area)) m += e.end - e.start;
+      for (const e of eventsOn(d)) if (!e.allDay && !e.maybe && isWork(e.area)) m += e.end - e.start;
       for (const t of planned.get(d) || []) if (isWork(t.area)) m += taskLoad(t);
     }
     return m;
@@ -478,7 +487,7 @@ function view(state, now){
     }
     return { tasks: n, mins, deadlines };
   }
-  return { now, today, tasks, eventsOn, tasksOn, dueOn, dayLoad, workMinutes, weekStats,
+  return { now, today, tasks, eventsOn, tasksOn, dueOn, dayLoad, workMinutes, weekStats, hideMaybes: hide, hiddenOn: date => hidden.get(date) || [],
     missed: () => tasks.filter(t => isMissed(t, now)).sort(dueOrder),
     undated: () => tasks.filter(t => taskOpen(t) && !t.plan && !t.due && !t.someday).sort(taskOrder),
     someday: () => tasks.filter(t => taskOpen(t) && t.someday).sort(taskOrder),
@@ -489,7 +498,8 @@ function clashesWith(state, now, candidates){
   const v = view(state, now), out = [];
   for (const c of candidates) {
     const occ = c.kind === 'series' ? seriesOccurrences(c) : c.kind === 'event' ? [c] : [];
-    for (const o of occ) { const hit = v.eventsOn(o.date).find(e => e.id !== o.id && overlap(e, o)); if (hit) out.push({ date: o.date, with: hit.title || 'another event' }); }
+    if (c.maybe) continue;                                      // a maybe never clashes
+    for (const o of occ) { const hit = v.eventsOn(o.date).find(e => e.id !== o.id && !e.maybe && overlap(e, o)); if (hit) out.push({ date: o.date, with: hit.title || 'another event' }); }
   }
   return out;
 }
@@ -502,7 +512,8 @@ function clashesWith(state, now, candidates){
 // and tomorrow. A missed deadline is never here: it lives in the Pending chip.
 function dayRows(v, date, o){
   const now = v.now, rel = diffDays(v.today, date), all = !!(o && o.all);
-  const evs = v.eventsOn(date).filter(e => all || !e.routine || rel === 0 || rel === 1);
+  const shows = e => all || !e.routine || rel === 0 || rel === 1;
+  const evs = v.eventsOn(date).filter(shows), hidden = v.hiddenOn(date).filter(shows).length;
   const timed = evs.filter(e => !e.allDay);
   const planned = v.tasksOn(date).filter(t => t.done || !isMissed(t, now));
   const dls = v.dueOn(date).filter(t => !t.done && !isMissed(t, now) && t.plan !== date);
@@ -517,7 +528,7 @@ function dayRows(v, date, o){
   }
   for (const t of planned) rows.push({ type: 'task', task: t, inDay: !!(t.due && t.due.date === date) });
   const open = planned.filter(t => !t.done);
-  return { date, rows, mins: open.reduce((m, t) => m + taskLoad(t), 0), empty: rows.length === 0,
+  return { date, rows, hidden, mins: open.reduce((m, t) => m + taskLoad(t), 0), empty: rows.length === 0,
     // Everything planned for today is ticked off: the heading shows the reminder line instead of the hours.
     allDone: rel === 0 && planned.length > 0 && open.length === 0 };
 }
@@ -536,13 +547,13 @@ function weekHead(v, sunday){
     range: weekRange(sunday), stats: v.weekStats(sunday) };
 }
 // The Everything list, top to bottom.
-function everything(state, now){
-  const v = view(state, now), today = v.today, sun = sundayOf(today), per = periodOf(today);
+function everything(state, now, o){
+  const v = view(state, now, o), today = v.today, sun = sundayOf(today), per = periodOf(today);
   const thisWeek = Object.assign(weekHead(v, sun), { days: [] });
   // Every remaining day of this week keeps its heading, even with nothing on it.
   for (let d = today; d <= addDays(sun, 6); d = addDays(d, 1)) thisWeek.days.push(dayRows(v, d));
   const nsun = addDays(sun, 7), nextWeek = Object.assign(weekHead(v, nsun), { days: [] });
-  for (let i = 0; i < 7; i++) { const r = dayRows(v, addDays(nsun, i)); if (!r.empty) nextWeek.days.push(r); }
+  for (let i = 0; i < 7; i++) { const r = dayRows(v, addDays(nsun, i)); if (!r.empty || r.hidden) nextWeek.days.push(r); }
   // Later in this term (or this vacation): a group a week, deadlines and one-off events, then how many tasks are planned.
   const later = []; let shown = addDays(nsun, 6);
   for (let s = addDays(nsun, 7); s <= per.last; s = addDays(s, 7)) {
@@ -592,8 +603,8 @@ function searchItems(state, now, q){
 }
 // The Term page: one term or vacation as a grid of weeks. For each day: how
 // full it is, whether an undone deadline falls on it, and its one-off events.
-function termGrid(state, now, periodId){
-  const v = view(state, now), ps = periods(), here = periodOf(v.today).id;
+function termGrid(state, now, periodId, o){
+  const v = view(state, now, o), ps = periods(), here = periodOf(v.today).id;
   const per = ps.find(p => p.id === periodId) || ps.find(p => p.id === here), at = ps.indexOf(per), weeks = [];
   for (let k = 0; k < per.weeks; k++) {
     const sunday = addDays(per.first, 7 * k), days = [];
@@ -603,7 +614,7 @@ function termGrid(state, now, periodId){
         tint: Math.round(Math.min(1, v.dayLoad(date) / 540) * 22),                       // a nine-hour day is as dark as it gets
         fill: Math.round(Math.min(1, v.dayLoad(date) / 540) * 100),                      // the same, as the length of the Mac's bar
         due: !open.length ? null : open.some(t => isMissed(t, now)) ? 'past' : rel <= 1 ? 'soon' : 'ahead',
-        dots: v.eventsOn(date).filter(e => !e.routine).slice(0, 3).map(e => e.area) }, termCell(v, date)));
+        dots: v.eventsOn(date).filter(e => !e.routine && !e.maybe).slice(0, 3).map(e => e.area) }, termCell(v, date)));      // a maybe gets no dot
     }
     weeks.push({ n: per.kind === 'term' ? k : null, sunday, days });
   }
@@ -621,8 +632,10 @@ function termCell(v, date){
   const now = v.now, dls = v.dueOn(date), evs = v.eventsOn(date).filter(e => !e.routine), all = [];
   for (const t of dls) if (!t.done) all.push({ kind: 'due', id: t.id, text: t.title, time: t.due.time, level: urgency(t.due, now, true).level, done: false });
   for (const t of dls) if (t.done) all.push({ kind: 'due', id: t.id, text: t.title, time: t.due.time, level: 'near', done: true });
-  for (const e of evs) if (!e.allDay) all.push({ kind: 'event', id: e.id, text: e.title, time: e.start });
-  for (const e of evs) if (e.allDay) all.push({ kind: 'allday', id: e.id, text: e.title, time: null });
+  for (const e of evs) if (!e.allDay && !e.maybe) all.push({ kind: 'event', id: e.id, text: e.title, time: e.start });
+  for (const e of evs) if (e.allDay && !e.maybe) all.push({ kind: 'allday', id: e.id, text: e.title, time: null });
+  // Maybes come last, so they never push a firm thing out of the three lines.
+  for (const e of evs) if (e.maybe) all.push({ kind: e.allDay ? 'allday' : 'event', id: e.id, text: e.title, time: e.allDay ? null : e.start, maybe: true });
   const lines = all.length > CELL_LINES ? all.slice(0, CELL_LINES - 1) : all;
   return { lines, more: all.length - lines.length };
 }
@@ -632,7 +645,7 @@ function termCell(v, date){
 function dayTip(v, date){
   const now = v.now, evs = v.eventsOn(date), dls = v.dueOn(date), seen = new Set(dls.map(t => t.id));
   const top = evs.filter(e => e.allDay).map(e => ({ lead: 'all day', text: e.title }));
-  const line = evs.filter(e => !e.allDay).map(e => ({ at: e.start, lead: fmtTime(e.start) + '–' + fmtTime(e.end), text: e.title, clash: !!e.clash }))
+  const line = evs.filter(e => !e.allDay).map(e => ({ at: e.start, lead: fmtTime(e.start) + '–' + fmtTime(e.end), text: e.title, clash: !!e.clash, maybe: !!e.maybe }))
     .concat(dls.map(t => ({ at: t.due.time == null ? 1440 : t.due.time, text: t.title, done: !!t.done, level: t.done ? 'near' : urgency(t.due, now, true).level,
       lead: (t.done ? 'handed in' : isMissed(t, now) ? 'missed' : 'due') + (t.due.time != null && !t.done ? ' ' + fmtTime(t.due.time) : '') })))
     .sort((a, b) => a.at - b.at);
@@ -662,8 +675,8 @@ function lanes(list){
 // (the Due row), its all-day entries, and its boxes: every timed event and
 // every task with a time block, in lanes. Then the panel beside the grid: the
 // week's planned tasks that have no block yet, and the undated ones.
-function weekGrid(state, now, sunday){
-  const v = view(state, now), sun = sundayOf(isDate(sunday) ? sunday : v.today), last = addDays(sun, 6), days = [];
+function weekGrid(state, now, sunday, o){
+  const v = view(state, now, o), sun = sundayOf(isDate(sunday) ? sunday : v.today), last = addDays(sun, 6), days = [];
   for (let i = 0; i < 7; i++) {
     const date = addDays(sun, i), rel = diffDays(v.today, date), evs = v.eventsOn(date);
     const boxes = evs.filter(e => !e.allDay).map(e => ({ kind: 'event', id: e.id, start: e.start, end: e.end, event: e, past: rel < 0 || (rel === 0 && e.end <= now.min) }))
@@ -671,7 +684,7 @@ function weekGrid(state, now, sunday){
       .concat(v.tasksOn(date).filter(t => t.block && t.plan === date).map(t => ({ kind: 'task', id: t.id, start: t.block.start, end: t.block.end, task: t })));
     days.push({ date, day: +date.slice(8), today: rel === 0, past: rel < 0,
       due: v.dueOn(date).map(t => ({ task: t, level: t.done ? 'done' : urgency(t.due, now, true).level })),
-      allDay: evs.filter(e => e.allDay), boxes: lanes(boxes) });
+      allDay: evs.filter(e => e.allDay), boxes: lanes(boxes), hidden: v.hiddenOn(date).length });
   }
   const order = (a, b) => (a.plan < b.plan ? -1 : a.plan > b.plan ? 1 : 0) || (b.important ? 1 : 0) - (a.important ? 1 : 0)
     || (a.title < b.title ? -1 : a.title > b.title ? 1 : 0) || (a.id < b.id ? -1 : 1);
@@ -744,7 +757,7 @@ function parseAdd(src, ctx){
   const low = src.replace(/[A-Z]/g, c => c.toLowerCase());     // ASCII only, so every index still lines up with src
   const marks = [], lits = [];
   const R = { days: [], weeks: null, week: null, termCode: null, termId: null, date: null, s: null, e: null, range: false,
-    due: false, est: null, imp: false, place: null, area: null };
+    due: false, est: null, imp: false, place: null, area: null, maybe: false };
   const overlaps = (i, j) => marks.some(k => i < k.j && j > k.i) || lits.some(k => i < k.j && j > k.i);
   function take(re, type, fn){
     re.lastIndex = 0; let m;
@@ -775,6 +788,8 @@ function parseAdd(src, ctx){
     if (!hit) return false;
     R.area = hit.id;
   });
+  // "maybe" first on the line: something he might go to. Only an event or a repeat can be one (see below).
+  take(/^\s*maybe:?(?=\s|$)/g, 'maybe', () => { R.maybe = true; });
 
   /* --- weeks and terms --- */
   const okWeek = n => n >= -9 && n <= 20;
@@ -910,6 +925,8 @@ function parseAdd(src, ctx){
     }
   }
   let weeks = R.weeks ? (R.weeks.list ? uniqSorted(R.weeks.list) : Array.from({ length: R.weeks.to - R.weeks.from + 1 }, (_, i) => R.weeks.from + i)) : null;
+  // A task or a deadline cannot be a maybe: there the word stays in the title.
+  if (R.maybe && (R.due || !(weeks || R.days.length > 1 || (R.s !== null && !R.est)))) { R.maybe = false; const k = marks.findIndex(x => x.type === 'maybe'); if (k >= 0) marks.splice(k, 1); }
 
   /* --- the title is whatever was not understood as a date, time or flag --- */
   const spans = marks.map(k => ({ i: k.i, j: k.j, text: ' ' })).concat(lits.map(k => ({ i: k.i, j: k.j, text: k.text }))).sort((x, y) => x.i - y.i);
@@ -937,17 +954,7 @@ function parseAdd(src, ctx){
   if (repeat) {
     if (!repDays.length && R.date) repDays = [weekday(R.date)];
     if (!term) term = currentTerm(today);
-    if (!weeks && term) {
-      // No weeks given: from this week to 8th (from 1st, if this is 0th week), or weeks 1 to 8 of the term to come.
-      // If this week's days have all gone by, start next week.
-      const w = where(today); let from = 1;
-      if (w.kind === 'term' && w.term.id === term.id) {
-        from = Math.max(w.week, 1);
-        const sunday = addDays(term.start, 7 * (from - 1));
-        if (repDays.length && !repDays.some(d => addDays(sunday, d) >= today)) from++;
-      }
-      weeks = []; for (let n = from; n <= Math.max(8, from); n++) weeks.push(n);
-    }
+    if (!weeks && term) weeks = autoWeeks(term, repDays, today);
     if (!term && !needs.includes('term')) needs.push('term');
     if (!repDays.length) needs.push('day');
     if (kind === 'series' && R.s === null) needs.push('time');
@@ -971,12 +978,92 @@ function parseAdd(src, ctx){
   if (!title) needs.push('title');
 
   return { src, title, kind, area, date, weekOnly, days: repeat ? repDays : days, weeks, weeksSpec: R.weeks, week: R.week, term: term ? term.id : null,
-    start: R.s, end: R.e, est: R.est, important: R.imp, place: R.place || '', block, dates, count, needs, marks: marks.slice().sort((x, y) => x.i - y.i) };
+    start: R.s, end: R.e, est: R.est, important: R.imp, place: R.place || '', maybe: R.maybe, block, dates, count, needs, marks: marks.slice().sort((x, y) => x.i - y.i) };
+}
+// A repeat typed with no weeks: from this week to 8th (from 1st, if this is 0th week), or weeks 1 to 8
+// of the term to come. If this week's days have all gone by, it starts next week.
+function autoWeeks(term, repDays, today){
+  const w = where(today); let from = 1;
+  if (w.kind === 'term' && w.term.id === term.id) {
+    from = Math.max(w.week, 1);
+    const sunday = addDays(term.start, 7 * (from - 1));
+    if (repDays.length && !repDays.some(d => addDays(sunday, d) >= today)) from++;
+  }
+  const weeks = []; for (let n = from; n <= Math.max(8, from); n++) weeks.push(n);
+  return weeks;
+}
+
+/* ----- the add bar's fields: what was read, with whatever he has set by hand put over it ----- */
+// The four kinds the add bar's switch offers, and which of the reader's kinds each covers.
+const FIELD_KIND = { event: 'event', planned: 'task', task: 'task', deadline: 'deadline', deadlines: 'deadline', series: 'series' };
+// `r` is what parseAdd read; `f` the fields he has set himself: any of kind, title, date, start, end, days,
+// weeks, area, place, maybe. What he set always wins; the reader fills in the rest. A field set to null
+// is one he has emptied. The result has the shape parseAdd returns, so describe and buildItems take it
+// as they are, and `needs` says what is still missing, in words for the fields.
+function withFields(r, f, ctx){
+  f = f || {}; ctx = ctx || {};
+  const has = k => Object.prototype.hasOwnProperty.call(f, k), pick = k => has(k) ? f[k] : r[k];
+  const fk = has('kind') ? f.kind : FIELD_KIND[r.kind] || 'task';
+  const title = String(pick('title') == null ? '' : pick('title')).trim();
+  let date = pick('date'), start = pick('start'), end = has('end') ? f.end : null;
+  if (!isDate(date)) date = null;
+  if (start == null || !Number.isFinite(start)) start = null;
+  // An end he has not set follows the start, keeping the length the reader found (or an hour).
+  if (!has('end')) {
+    const len = r.kind === 'planned' && r.block ? r.block.end - r.block.start : (r.start != null && r.end != null ? r.end - r.start : 60);
+    end = start == null ? null : (has('start') ? Math.min(1440, start + len) : (r.kind === 'planned' && r.block ? r.block.end : r.end != null ? r.end : Math.min(1440, start + len)));
+  }
+  if (end != null && !Number.isFinite(end)) end = null;
+  const needs = [], out = Object.assign({}, r, { title, area: pick('area') || r.area || 'pers', place: String(pick('place') || '').trim(),
+    maybe: (fk === 'event' || fk === 'series') && !!pick('maybe'), date, start, end, block: null, dates: null, count: null, weekOnly: has('date') ? false : r.weekOnly });
+  if (!title) needs.push('title');
+  if (fk === 'event') {
+    out.kind = 'event';
+    if (!date) needs.push(out.weekOnly ? 'day' : 'pickday');
+    if (start == null) needs.push('start');
+    else if (end == null || end <= start) needs.push('order');
+  } else if (fk === 'task') {
+    out.kind = date || out.weekOnly ? 'planned' : 'task';
+    if (start != null) {
+      if (!date) needs.push('timeday');
+      else if (end == null || end <= start) needs.push('order');
+      else out.block = { start, end };
+    }
+    if (out.weekOnly && start != null) needs.push('day');
+  } else if (fk === 'deadline' && !(r.kind === 'deadlines' && !has('kind') && !has('date'))) {
+    out.kind = 'deadline'; out.end = null;
+    if (!date) needs.push('duedate');
+  } else {
+    // A repeat, or a deadline that repeats: days and weeks in a term.
+    out.kind = fk === 'series' ? 'series' : 'deadlines';
+    let days = has('days') ? f.days : r.days;
+    days = uniqSorted((days || []).filter(d => isInt(d, 0, 6)));
+    if (!days.length && date && !has('days')) days = [weekday(date)];
+    // The term the reader found; else the term of the day given; else this term (or the next, in a vacation).
+    const term = termById(r.term) || (date && where(date).kind === 'term' ? where(date).term : null) || (ctx.today ? currentTerm(ctx.today) : null);
+    let weeks = has('weeks') ? f.weeks : r.weeks;
+    if (!has('weeks') && !weeks && term) weeks = autoWeeks(term, days, ctx.today || term.start);
+    out.days = days; out.weeks = Array.isArray(weeks) ? uniqSorted(weeks.filter(w => isInt(w, -9, 20))) : null; out.term = term ? term.id : null; out.date = null; out.weekOnly = false;
+    if (out.kind === 'deadlines') out.end = null;
+    if (!term) needs.push('term');
+    if (!days.length) needs.push('days');
+    if (!out.weeks || !out.weeks.length) needs.push('weeks');
+    if (out.kind === 'series') { if (start == null) needs.push('start'); else if (end == null || end <= start) needs.push('order'); }
+    if (term && days.length && out.weeks && out.weeks.length) {
+      out.dates = []; for (const w of out.weeks) for (const d of days) out.dates.push(addDays(term.start, 7 * (w - 1) + d));
+      out.dates.sort(); out.count = out.dates.length;
+    }
+  }
+  out.needs = needs;
+  return out;
 }
 
 const KIND_WORDS = { deadline: 'Deadline', deadlines: 'Repeating deadline', series: 'Repeating event', event: 'Event', planned: 'Task for a day', task: 'Task, no date yet' };
 const NEED_WORDS = { title: 'Give it a title.', date: 'Say when it is due, for example “Fri” or “3 Nov”.', day: 'Say which day, for example “Wed”.', time: 'Say what time, for example “9” after the day, or “2pm”.',
-  term: 'The term dates end at Trinity 2028, so a week number cannot be read here.' };
+  term: 'The term dates end at Trinity 2028, so a week number cannot be read here.',
+  // the words for the add bar's fields
+  pickday: 'Pick a day.', duedate: 'Pick the day it is due.', start: 'Give a start time.', order: 'The end must be after the start.', timeday: 'A time needs a day as well.',
+  days: 'Choose at least one day.', weeks: 'Give the weeks, for example 1-8.' };
 function weeksWords(r){
   const w = r.weeks || [];
   if (!w.length) return '';
@@ -1004,6 +1091,7 @@ function describe(r, ctx){
   if (r.est && r.kind !== 'event' && r.kind !== 'series') chips.push(['Estimate', fmtDur(r.est)]);
   if (r.place) chips.push(['Place', r.place]);
   if (r.important) chips.push(['Marked', 'Important']);
+  if (r.maybe) chips.push(['Marked', 'Maybe']);
   const t = r.title || 'Untitled';
   let will;
   if (r.kind === 'series') will = ['Will add ', t, ', ' + when + (r.start !== null ? ', ' + fmtTime(r.start) + '–' + fmtTime(r.end) : '') + '.'];
@@ -1027,9 +1115,9 @@ function buildItems(r, mk){
   if (r.needs.length) return [];
   const now = mk.now, id = mk.id || newId;
   const base = { title: r.title, area: r.area, updatedAt: now };
-  if (r.kind === 'event') return [makeEvent(Object.assign({ id: id(), date: r.date, start: r.start, end: r.end, place: r.place }, base))];
+  if (r.kind === 'event') return [makeEvent(Object.assign({ id: id(), date: r.date, start: r.start, end: r.end, place: r.place, maybe: r.maybe }, base))];
   // A repeat he types is timetable: it shows in the list for today and tomorrow only.
-  if (r.kind === 'series') return [makeSeries(Object.assign({ id: id(), days: r.days, start: r.start, end: r.end, place: r.place, term: r.term, weeks: r.weeks, routine: true }, base))];
+  if (r.kind === 'series') return [makeSeries(Object.assign({ id: id(), days: r.days, start: r.start, end: r.end, place: r.place, term: r.term, weeks: r.weeks, routine: true, maybe: r.maybe }, base))];
   const task = { est: r.est || 0, important: r.important, notes: r.place ? '@ ' + r.place : '' };
   if (r.kind === 'deadline') return [makeTask(Object.assign({ id: id(), due: { date: r.date, time: r.start } }, task, base))];
   // A deadline that repeats is not a series: one separate task a week, sharing a group id.
@@ -1117,11 +1205,24 @@ function withSetting(state, key, value, nowMs){
 // What an import says about an item, as text: the fields the source supplies.
 // It is stored with the item (source.sig), so the next import can tell what
 // has changed at the source from what he has changed himself.
+// `maybe` comes last and is written into the record only when set, so the record of anything imported
+// before maybes existed is exactly what it was, and importing it again finds it unchanged.
 const SOURCE_FIELDS = {
-  event:  ['title', 'area', 'date', 'start', 'end', 'allDay', 'place', 'notes', 'routine'],
-  series: ['title', 'area', 'days', 'start', 'end', 'place', 'term', 'weeks', 'notes', 'routine'],
+  event:  ['title', 'area', 'date', 'start', 'end', 'allDay', 'place', 'notes', 'routine', 'maybe'],
+  series: ['title', 'area', 'days', 'start', 'end', 'place', 'term', 'weeks', 'notes', 'routine', 'maybe'],
   task:   ['title', 'area', 'plan', 'due', 'est', 'important', 'notes'] };
-function sourceSig(it){ return canon((SOURCE_FIELDS[it.kind] || []).map(k => it[k] === undefined ? null : it[k])); }
+const srcVal = (it, k) => k === 'maybe' ? (it.maybe ? true : null) : (it[k] === undefined ? null : it[k]);
+function sourceSig(it){
+  const f = SOURCE_FIELDS[it.kind] || [], vals = f.map(k => srcVal(it, k));
+  if (f[f.length - 1] === 'maybe' && vals[vals.length - 1] === null) vals.pop();
+  return canon(vals);
+}
+// Has he changed any field the source supplies? (A repeat with a time changed or cancelled on its own counts as changed.)
+const touchedByHim = it => !isObj(it.source) || typeof it.source.sig !== 'string' || sourceSig(it) !== it.source.sig
+  || (it.kind === 'series' && Object.keys(it.exceptions || {}).length > 0);
+const setSrc = (out, k, inc) => { if (k !== 'maybe') out[k] = inc[k]; else if (inc.maybe) out.maybe = true; else delete out.maybe; };
+// Taken out by the tools, not by him: by Undo, or withdrawn by the source. A fresh import brings it back.
+const byTools = it => typeof it.deletedBy === 'string' && (it.deletedBy.indexOf('undo:') === 0 || it.deletedBy.indexOf('withdraw:') === 0);
 function withSourceSig(it){ return Object.assign({}, it, { source: Object.assign({}, it.source, { sig: sourceSig(it) }) }); }
 // An imported item meeting the copy already on the device. His own changes
 // survive a second import of the same thing:
@@ -1136,7 +1237,7 @@ function mergeImport(local, inc){
   // Stamped to win over every older copy of the item; one more again if it carries a change of his,
   // so that it also wins over the plain new version a device without that change will make.
   const plain = Math.max(stampOf(inc), stampOf(local) + 1);
-  if (local.deleted && typeof local.deletedBy === 'string' && local.deletedBy.indexOf('undo:') === 0) return Object.assign({}, inc, { updatedAt: plain });
+  if (local.deleted && byTools(local)) return Object.assign({}, inc, { updatedAt: plain });
   const was = isObj(local.source) ? local.source.sig : undefined, now = isObj(inc.source) ? inc.source.sig : undefined;
   // A marker is all that is left of something he deleted more than 30 days ago. It stays deleted,
   // whatever the source now says; only its note of what the source says is brought up to date.
@@ -1147,7 +1248,7 @@ function mergeImport(local, inc){
   const fields = SOURCE_FIELDS[inc.kind];
   if (!Array.isArray(old) || !fields || local.kind !== inc.kind) return pickLater(local, inc);
   const out = Object.assign({}, local); let his = false;
-  fields.forEach((k, n) => { if (canon(local[k] === undefined ? null : local[k]) === canon(old[n] === undefined ? null : old[n])) out[k] = inc[k]; else his = true; });
+  fields.forEach((k, n) => { if (canon(srcVal(local, k)) === canon(old[n] === undefined ? null : old[n])) setSrc(out, k, inc); else his = true; });
   out.source = inc.source; out.updatedAt = his ? later : plain;
   return out;
 }
@@ -1171,10 +1272,32 @@ function collectInbox(state, inbox){
       if (local === undefined) fresh.push(it.id); else replaced[it.id] = local;
       items[it.id] = next;
     }
-    imports[b.id] = { at: b.at, label: b.label || '', ids, added: fresh, replaced, undone: false, updatedAt: Number.isFinite(b.at) ? b.at : 0 };
+    // Withdrawn: the source takes back what it sent. Deleted unless he has changed it; Undo puts it back.
+    // Stamped from the batch's own time, so two devices that collect it agree.
+    const withdrawn = [];
+    for (const id of Array.isArray(b.withdraw) ? b.withdraw : []) {
+      const local = typeof id === 'string' && id !== '__proto__' ? own(items, id) : undefined;
+      if (!withdrawable(local) || withdrawn.includes(id)) continue;
+      if (own(replaced, id) === undefined && !fresh.includes(id)) replaced[id] = local;
+      items[id] = remove(local, Math.max(stampOf(local) + 1, Number.isFinite(b.at) ? b.at : 0), 'withdraw:' + b.id);
+      withdrawn.push(id); ids.push(id);
+    }
+    imports[b.id] = Object.assign({ at: b.at, label: b.label || '', ids, added: fresh, replaced }, withdrawn.length ? { withdrawn } : {}, { undone: false, updatedAt: Number.isFinite(b.at) ? b.at : 0 });
     added.push(b.id);
   }
   return { state: items ? Object.assign({}, state, { items, imports }) : state, added };
+}
+// Can a withdrawal take this out? Only something an import brought, still there, and not changed by him.
+const withdrawable = it => isObj(it) && !it.deleted && !!it.kind && isObj(it.source) && !touchedByHim(it);
+// What a withdrawal would do to each id, for the tool's preview. The same test as collectInbox.
+//   withdraw  it will be taken out (Undo puts it back);
+//   kept      he has changed it, so it stays;
+//   deleted   it is already gone;
+//   absent    the app has never had it.
+function withdrawPlan(state, ids){
+  const have = isObj(state && state.items) ? state.items : {};
+  return (ids || []).map(id => { const it = own(have, id);
+    return { id, item: it, status: it === undefined ? 'absent' : it.deleted ? 'deleted' : withdrawable(it) ? 'withdraw' : 'kept' }; });
 }
 // Undo removes what that import added and puts back what it replaced. Nothing
 // from an earlier import is touched.
@@ -1224,7 +1347,7 @@ function makeBatch(list, o){
 function importPlan(state, items, o){
   o = o || {};
   const have = isObj(state && state.items) ? state.items : {}, rows = [];
-  const val = (x, k) => canon(x[k] === undefined ? null : x[k]);
+  const val = (x, k) => canon(srcVal(x, k));
   for (const it of items) {
     // The merge itself is run, so the preview cannot say one thing and the app do another.
     const local = own(have, it.id), next = mergeImport(local, it), row = { id: it.id, item: it, status: 'new', fields: [], kept: [] };
@@ -1279,10 +1402,11 @@ function inboxWith(inbox, batch, state, nowMs){
 
 // "Added 32 from Claude: lectures and Greek classes". Null when the batch changed nothing.
 function importSummary(rec){
-  const n = (rec.added || rec.ids || []).length, c = Object.keys(rec.replaced || {}).length;
-  if (!n && !c) return null;
-  const what = n && c ? 'Added ' + n + ' and updated ' + c : n ? 'Added ' + n : 'Updated ' + c;
-  return what + ' from Claude' + (rec.label ? ': ' + rec.label : '');
+  const w = (rec.withdrawn || []).length, n = (rec.added || rec.ids || []).length, c = Object.keys(rec.replaced || {}).length - w;
+  const parts = [n ? 'added ' + n : '', c ? 'updated ' + c : '', w ? 'removed ' + w : ''].filter(Boolean);
+  if (!parts.length) return null;
+  const what = parts.length === 1 ? parts[0] : parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1];
+  return what[0].toUpperCase() + what.slice(1) + ' from Claude' + (rec.label ? ': ' + rec.label : '');
 }
 
 /* ----- backups: everything as one file, and reading one back ----- */
@@ -1604,15 +1728,15 @@ return {
   taskOpen, effective, carryForward, duePassed, isMissed, urgency, taskLoad, settle, tick, untick, drop, undrop, remove, restore, compact, recentlyDeleted,
   TRASH_DAYS, MARKER_DAYS,
   // reading the state
-  markClashes, freeGaps, freeText, GAP_MIN, view, clashesWith, dayRows, aheadRows, everything, byArea, searchItems, termGrid,
+  maybeOf, withMaybe, markClashes, freeGaps, freeText, GAP_MIN, view, clashesWith, dayRows, aheadRows, everything, byArea, searchItems, termGrid,
   // the Mac pages
   termCell, dayTip, lanes, weekGrid, SNAP_MIN, snapMin, moveBlock, resizeBlock, dropBlock, blockTask, unblockTask, moveEvent, occurrenceChange,
   // the reader
-  parseAdd, describe, buildItems, slotText,
+  parseAdd, describe, buildItems, slotText, withFields, FIELD_KIND,
   // merging
   canon, pickLater, mergeStates, mergeSettings, withSetting, collectInbox, undoImport, importSummary, mergeImport, sourceSig, withSourceSig, SOURCE_FIELDS,
   // for the import tools
-  makeBatch, importPlan, previewRows, inboxWith, INBOX_DAYS,
+  makeBatch, importPlan, withdrawPlan, previewRows, inboxWith, INBOX_DAYS,
   // backups
   BACKUP_FORMAT, makeBackup, readBackup, importBackup,
   // sync

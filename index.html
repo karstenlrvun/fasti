@@ -200,6 +200,26 @@ button{ cursor:pointer; -webkit-tap-highlight-color:transparent; }
 .echo .k-due,.echo .k-imp{ background:color-mix(in srgb, var(--danger) 16%, transparent); }
 .echo .k-est,.echo .k-place,.echo .k-area{ background:color-mix(in srgb, var(--a-read) 18%, transparent); }
 .pchips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+/* the add bar's fields: what was read, each one his to change */
+.afields{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 10px; margin-top:6px; }
+.afields .wide{ grid-column:1 / -1; }
+.afields .f{ margin-top:10px; }
+.afields .f > span{ display:flex; align-items:center; gap:6px; }
+.afields .f > span .own{ font-weight:400; color:var(--accent); }
+.unpin{ all:unset; box-sizing:border-box; cursor:pointer; min-width:52px; min-height:44px; margin:-14px -10px -14px auto; display:grid; place-items:center; border-radius:7px; color:var(--muted); font-size:12px; font-weight:600; }
+.kindseg{ display:flex; width:100%; margin-top:10px; }
+.kindseg button{ flex:1; }
+.afields .dayset{ margin-top:2px; }
+.addbtns{ display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+/* a maybe: fainter and smaller, a dashed ring where the colour dot goes, and the word itself, so colour is never the only sign */
+.r2.is-maybe{ padding-top:6px; padding-bottom:6px; }
+.r2.is-maybe .ttl{ color:var(--muted); font-size:calc(var(--row) - 2px); }
+.r2.is-maybe .timecol{ color:var(--faint); }
+.dot.hollow{ width:10px; height:10px; background:transparent !important; border:1.6px dashed var(--c); }
+.mtag{ border:1px dashed var(--faint); border-radius:999px; padding:0 7px; font-size:11px; font-weight:600; color:var(--muted); letter-spacing:.02em; }
+.mhidden{ padding:5px 12px 2px; font-size:12px; color:var(--faint); }
+.mbtn{ flex-shrink:0; }
+.mbtn[aria-pressed="true"]{ background:var(--accent-soft); color:var(--accent); border-color:transparent; }
 .pchip{ background:var(--panel); border:1px solid var(--line); border-radius:9px; padding:6px 10px; font-size:var(--meta); overflow-wrap:anywhere; min-width:0; }
 .pchip small{ display:block; font-size:10.5px; color:var(--faint); text-transform:uppercase; letter-spacing:.06em; }
 .pchip b{ font-weight:600; }
@@ -345,6 +365,13 @@ body.mac{ height:100vh; overflow:hidden; }
 .blk.task .tick.on i::after{ left:3.2px; top:.8px; width:3px; height:6px; border-width:0 1.6px 1.6px 0; }
 .blk.is-done b{ text-decoration:line-through; color:var(--faint); }
 .blk.is-done{ cursor:pointer; }
+.blk.maybe{ border:1.5px dashed color-mix(in srgb, var(--ac) 70%, transparent);
+  background:repeating-linear-gradient(135deg, color-mix(in srgb, var(--ac) 12%, var(--panel)) 0 5px, var(--panel) 5px 10px); }
+.blk.maybe b{ font-weight:500; color:var(--muted); }
+.blk .olab{ display:block; font-style:normal; font-size:10px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }
+.blk.short .olab{ display:inline; }
+.whid{ display:block; font-size:10.5px; color:var(--faint); }
+.citem.is-maybe{ color:var(--faint); font-style:italic; }
 .blk.past{ opacity:.5; }
 .blk.lifted{ opacity:.3; }
 .blk.ghost{ z-index:5; box-shadow:0 8px 20px -8px rgba(0,0,0,.45); pointer-events:none; }
@@ -372,6 +399,11 @@ body.dragging,body.dragging *{ cursor:grabbing !important; user-select:none; -we
 .mac .echo mark::after{ top:-3px; bottom:-3px; }
 .mac .check{ min-height:34px; }
 .mac .check input{ width:17px; height:17px; }
+.mac .afields{ grid-template-columns:repeat(4,minmax(0,1fr)); }
+.mac .afields .half{ grid-column:span 2; }
+.mac .afields .f{ margin-top:8px; }
+.mac .kindseg{ width:auto; display:inline-flex; }
+.mac .unpin{ min-height:22px; min-width:30px; margin:-4px -6px -4px auto; }
 .mac .dayset label{ min-height:34px; }
 .mac .swatch{ width:32px; height:32px; }
 .mac .swatch i{ width:16px; height:16px; }
@@ -394,7 +426,7 @@ body.dragging,body.dragging *{ cursor:grabbing !important; user-select:none; -we
 <script src="core.js"></script>
 <script>
 'use strict';
-const BUILD = '2026.10.12.5';
+const BUILD = '2026.10.20.1';
 const C = FastiCore;
 // On this Mac the app is served from localhost. A few switches for testing exist only there.
 const DEV = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
@@ -658,11 +690,15 @@ async function start(){
 // What is on screen. Which tab and which lens are remembered between visits; the rest is not.
 // The phone and the Mac each remember their own page (`tab` and `mtab`): the Mac has three and opens on Week the first time.
 const UI = { tab: 'every', mtab: 'week', lens: 'date', q: '', pendingOpen: false, undatedOpen: false, somedayOpen: false,
-  period: null, selDay: null, selWeek: null, week: null, pick: null, cur: null, hh: 58, drag: false, sheet: null, toastUndo: null, scroll: {} };
+  period: null, selDay: null, selWeek: null, week: null, pick: null, cur: null, hh: 58, drag: false, sheet: null, toastUndo: null, scroll: {}, hideMaybes: false };
 { const u = lsGet(KEY.ui); if (u.tab === 'term') UI.tab = 'term'; if (u.mtab === 'every' || u.mtab === 'term') UI.mtab = u.mtab; if (u.lens === 'area') UI.lens = 'area';
   if (u.scroll && typeof u.scroll === 'object') UI.scroll = u.scroll;
+  UI.hideMaybes = u.hideMaybes === true;
   for (const k of Object.keys(UI.scroll)) if (k.indexOf('m:week') === 0) delete UI.scroll[k]; }       // the week grid always opens at 08:00
-function saveUI(){ const u = lsGet(KEY.ui); u.tab = UI.tab; u.mtab = UI.mtab; u.lens = UI.lens; u.scroll = UI.scroll; lsSet(KEY.ui, u); }
+function saveUI(){ const u = lsGet(KEY.ui); u.tab = UI.tab; u.mtab = UI.mtab; u.lens = UI.lens; u.scroll = UI.scroll; u.hideMaybes = UI.hideMaybes; lsSet(KEY.ui, u); }
+// The maybes are shown or hidden on every page at once. Each device remembers its own choice.
+const MO = () => ({ hideMaybes: UI.hideMaybes });
+const maybeBtn = () => '<button class="sbtn ghost mbtn" data-act="maybes" aria-pressed="' + UI.hideMaybes + '">' + (UI.hideMaybes ? 'Show maybes' : 'Hide maybes') + '</button>';
 function restoreScroll(){ if (!MAC) window.scrollTo(0, UI.scroll[UI.tab] || 0); }
 // A window 700 px wide or more is the Mac layout; anything narrower is the phone's. So is anything under 500 px tall:
 // a phone held sideways is wide but short, and the phone never shows an hour grid.
@@ -676,7 +712,7 @@ const S = () => App.state;
 const nowL = () => C.londonNow(Date.now());
 const areaList = () => Object.keys(S().areas).map(k => S().areas[k]).filter(a => a && !a.deleted).sort((a, b) => a.order - b.order);
 const areaOf = id => S().areas[id] || { name: '', colour: 'pers' };
-const dot = id => '<i class="dot" style="background:var(--a-' + esc(areaOf(id).colour) + ')"></i>';
+const dot = (id, hollow) => hollow ? '<i class="dot hollow" style="--c:var(--a-' + esc(areaOf(id).colour) + ')" aria-hidden="true"></i>' : '<i class="dot" style="background:var(--a-' + esc(areaOf(id).colour) + ')"></i>';
 const label = (d, o) => C.dateLabel(d, Object.assign({ today: nowL().date }, o));
 const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
 const BAR_COLOUR = { glass: '#e6e0f0', steel: '#d6dbe1', slate: '#2b3441' };
@@ -718,18 +754,20 @@ function taskRow(t, o){
 function eventRow(e, o){
   o = o || {};
   const sub = [];
+  if (e.maybe) sub.push('<span class="mtag">maybe</span>');
   if (e.clash) sub.push('<span class="clash">clashes with ' + esc(e.clash) + '</span>');
   if (o.when) sub.push('<span>' + esc(label(e.date)) + '</span>');
   if (e.place) sub.push('<span>' + esc(e.place) + '</span>');
+  if (e.sameAs) sub.push('<span>same time as ' + esc(e.sameAs) + '</span>');
   const lead = e.allDay ? (MAC ? 'all day' : 'all<small>day</small>') : timesHTML(e.start, e.end);
-  return '<div class="r2' + (o.past ? ' is-past' : '') + '" data-act="open" data-id="' + esc(e.id) + '" role="button" tabindex="0"><span class="lead timecol">' + lead + '</span>'
-    + '<span class="ttl">' + (esc(e.title) || 'Untitled') + '</span>' + (sub.length ? '<span class="sub">' + sub.join('') + '</span>' : '') + '<span class="trail">' + dot(e.area) + '</span>' + estCol() + '</div>';
+  return '<div class="r2' + (o.past ? ' is-past' : '') + (e.maybe ? ' is-maybe' : '') + '" data-act="open" data-id="' + esc(e.id) + '" role="button" tabindex="0"><span class="lead timecol">' + lead + '</span>'
+    + '<span class="ttl">' + (esc(e.title) || 'Untitled') + '</span>' + (sub.length ? '<span class="sub">' + sub.join('') + '</span>' : '') + '<span class="trail">' + dot(e.area, e.maybe) + '</span>' + estCol() + '</div>';
 }
 const seriesWords = s => s.days.map(d => C.WD[d]).join(', ') + ' · weeks ' + C.weeksText(s.weeks) + (C.termById(s.term) ? ', ' + C.termById(s.term).name + ' ' + C.termById(s.term).year : '');
 function seriesRow(r){
   const s = r.series;
-  return '<div class="r2" data-act="open" data-id="' + esc(s.id) + '" role="button" tabindex="0"><span class="lead timecol">' + timesHTML(s.start, s.end) + '</span>'
-    + '<span class="ttl">' + (esc(s.title) || 'Untitled') + '</span><span class="sub"><span>' + esc(seriesWords(s)) + '</span><span>' + plural(r.count, 'time') + '</span>' + (s.place ? '<span>' + esc(s.place) + '</span>' : '') + '</span><span class="trail">' + dot(s.area) + '</span>' + estCol() + '</div>';
+  return '<div class="r2' + (s.maybe ? ' is-maybe' : '') + '" data-act="open" data-id="' + esc(s.id) + '" role="button" tabindex="0"><span class="lead timecol">' + timesHTML(s.start, s.end) + '</span>'
+    + '<span class="ttl">' + (esc(s.title) || 'Untitled') + '</span><span class="sub">' + (s.maybe ? '<span class="mtag">maybe</span>' : '') + '<span>' + esc(seriesWords(s)) + '</span><span>' + plural(r.count, 'time') + '</span>' + (s.place ? '<span>' + esc(s.place) + '</span>' : '') + '</span><span class="trail">' + dot(s.area, s.maybe) + '</span>' + estCol() + '</div>';
 }
 const rowHTML = r => r.type === 'task' ? taskRow(r.task, r) : r.type === 'free' ? '<div class="free">' + esc(r.text) + '</div>' : r.type === 'series' ? seriesRow(r) : eventRow(r.event, r);
 
@@ -742,7 +780,8 @@ function dayBlock(d, o){
   // `close`: a day picked on the Mac's term page that the list does not otherwise show; it is put at the top, and can be put away.
   const close = o && o.close ? '<button class="sbtn ghost" data-act="pickclose">Close</button>' : '';
   return '<div class="dayhead' + (d.empty ? ' is-empty' : '') + (UI.pick === d.date ? ' picked' : '') + '" data-date="' + d.date + '"><span>' + lbl + '</span><span class="htot">' + right + close + '</span></div>'
-    + (d.empty ? '' : '<div class="panel">' + d.rows.map(rowHTML).join('') + '</div>');
+    + (d.empty ? '' : '<div class="panel">' + d.rows.map(rowHTML).join('') + '</div>')
+    + (d.hidden ? '<div class="mhidden">' + plural(d.hidden, 'maybe') + ' hidden</div>' : '');
 }
 function ringHTML(r){
   const f = r.target ? Math.min(1, r.mins / r.target) : 0, c = 2 * Math.PI * 15;
@@ -785,7 +824,7 @@ function everyBody(m){
     for (const g of groups) h += '<div class="dayhead"><span>' + dot(g.area.id) + ' ' + esc(g.area.name) + '<span class="hsub">' + g.rows.length + '</span></span></div><div class="panel">' + g.rows.map(rowHTML).join('') + '</div>';
     return h + statusHTML();
   }
-  m = m || C.everything(S(), n);
+  m = m || C.everything(S(), n, MO());
   if (MAC && UI.pick && !m.thisWeek.days.concat(m.nextWeek.days).some(d => d.date === UI.pick)) h += dayBlock(C.dayRows(m.view, UI.pick, { all: true }), { close: true });
   if (m.pending.length) {
     h += '<div class="pendwrap"><button class="pending" data-act="toggle" data-k="pendingOpen" aria-expanded="' + UI.pendingOpen + '"><i></i>Pending ' + m.pending.length + '<span aria-hidden="true">' + (UI.pendingOpen ? '▾' : '▸') + '</span></button>';
@@ -810,7 +849,7 @@ const statusHTML = () => MAC ? '' : '<button class="status" data-act="settings">
 /* ----- Term ----- */
 const DUE_COLOUR = { past: '--danger', soon: '--soon', ahead: '--a-tut' }, DUE_WORDS = { past: 'missed deadline', soon: 'deadline', ahead: 'deadline' };
 function termBody(){
-  const n = nowL(), g = C.termGrid(S(), n, UI.period), per = g.period;
+  const n = nowL(), g = C.termGrid(S(), n, UI.period, MO()), per = g.period;
   const inPer = d => d && d >= per.first && d <= per.last;
   if (!inPer(UI.selDay)) UI.selDay = null;
   if (!inPer(UI.selWeek)) UI.selWeek = null;
@@ -846,7 +885,7 @@ const taskPanel = (list, o, none) => list.length ? '<div class="panel">' + list.
 
 /* ----- Everything: Undated and Someday on the left, the list beside them, the ring in the heading ----- */
 function macEvery(){
-  const n = nowL(), m = C.everything(S(), n);
+  const n = nowL(), m = C.everything(S(), n, MO());
   const col = (title, list) => '<div class="colhead"><span>' + title + '</span><span>' + list.length + '</span></div>' + taskPanel(list, null, 'Nothing here.');
   return '<div class="mevery"><aside class="mleft narrow" data-scroll="left" aria-label="Undated and Someday">' + col('Undated', m.undated) + '<div style="height:14px"></div>' + col('Someday', m.someday) + '</aside>'
     + '<section class="mmid"><div class="listhead"><div><h1 class="h1">Everything</h1><div class="h1sub">' + esc(label(n.date)) + '</div></div>' + lensSeg() + '<span class="sp"></span>' + ringHTML(m.ring) + '</div>'
@@ -856,7 +895,7 @@ function macEvery(){
 /* ----- Term: each day says what is on, in words. Hovering lists the whole day; clicking opens it in Everything ----- */
 let termView = null;
 function macTerm(){
-  const n = nowL(), g = C.termGrid(S(), n, UI.period), per = g.period, plain = { weekday: false, week: false };
+  const n = nowL(), g = C.termGrid(S(), n, UI.period, MO()), per = g.period, plain = { weekday: false, week: false };
   termView = g.view;
   const sub = (per.kind === 'term' ? '0th–9th week · full term ' + label(C.addDays(per.first, 7), { week: false }) + ' – ' + label(C.addDays(per.last, -7), { week: false }) : esc(label(per.first, plain) + ' to ' + label(per.last, plain)))
     + ' · <i class="dmark"></i>marks a deadline · the bar shows how full a day is';
@@ -871,7 +910,7 @@ function macTerm(){
       const say = [C.WDL[C.weekday(d.date)] + ' ' + label(d.date, plain)].concat(d.lines.map(words)); if (d.more) say.push('and ' + d.more + ' more');
       h += '<button class="tc' + (d.today ? ' today' : '') + (d.past ? ' past' : '') + '" style="--tint:' + d.tint + '%" data-act="pickday" data-d="' + d.date + '" aria-label="' + esc(say.join(', ')) + '">'
         + '<span class="cday">' + d.day + (d.day === 1 || d.date === per.first ? ' ' + C.MON[+d.date.slice(5, 7) - 1] : '') + '</span>'
-        + d.lines.map(l => '<span class="citem' + (l.kind === 'due' ? (l.done ? ' is-done' : ' u-' + l.level) : '') + '">' + (l.kind === 'due' ? '<i class="dmark"></i>' : '') + esc(l.text) + (l.time != null ? ' <span class="tn">' + C.fmtTime(l.time) + '</span>' : '') + '</span>').join('')
+        + d.lines.map(l => '<span class="citem' + (l.kind === 'due' ? (l.done ? ' is-done' : ' u-' + l.level) : '') + (l.maybe ? ' is-maybe' : '') + '">' + (l.kind === 'due' ? '<i class="dmark"></i>' : '') + esc(l.text) + (l.time != null ? ' <span class="tn">' + C.fmtTime(l.time) + '</span>' : '') + '</span>').join('')
         + (d.more ? '<span class="citem more">+' + d.more + ' more</span>' : '') + (d.fill ? '<span class="cload"><i style="width:' + d.fill + '%"></i></span>' : '') + '</button>';
     }
   }
@@ -884,7 +923,7 @@ function hideTip(){ tipCell = null; $('tip').hidden = true; }
 function showTip(cell){
   const lines = C.dayTip(termView, cell.dataset.d), t = $('tip');
   t.innerHTML = '<b>' + esc(label(cell.dataset.d)) + '</b>' + (lines.length ? lines.map(l => '<div class="tipline' + (l.done ? ' is-done' : '') + '"><span>' + esc(l.lead) + '</span><span' + (l.level && !l.done ? ' class="u-' + l.level + '"' : '') + '>'
-    + esc(l.text) + (l.clash ? ' <span class="clash">clash</span>' : '') + '</span></div>').join('') : '<div class="faint">Nothing on</div>');
+    + esc(l.text) + (l.clash ? ' <span class="clash">clash</span>' : '') + (l.maybe ? ' <span class="faint">(maybe)</span>' : '') + '</span></div>').join('') : '<div class="faint">Nothing on</div>');
   t.hidden = false;
   const r = cell.getBoundingClientRect(), w = t.offsetWidth, ht = t.offsetHeight;
   const win = document.documentElement;
@@ -895,22 +934,22 @@ function showTip(cell){
 /* ----- Week: seven columns of hours, a Due row and an all-day row above them, and the tasks still to schedule beside them ----- */
 function boxHTML(b){
   const it = b.kind === 'task' ? b.task : b.event, len = b.end - b.start, times = C.fmtTime(b.start) + '–' + C.fmtTime(b.end), clash = b.event && b.event.clash;
-  const cls = ['blk']; if (b.kind === 'task') cls.push('task'); if (b.past) cls.push('past'); if (it.done) cls.push('is-done'); if (len < 45) cls.push('short');
+  const cls = ['blk']; if (b.kind === 'task') cls.push('task'); if (b.past) cls.push('past'); if (it.done) cls.push('is-done'); if (len < 45) cls.push('short'); if (it.maybe) cls.push('maybe');
   const pos = 'top:calc(var(--hh)*' + (b.start / 60).toFixed(4) + ');height:calc(var(--hh)*' + (len / 60).toFixed(4) + ' - 2px);left:calc(' + (100 * b.lane / b.lanes).toFixed(2) + '% + 2px);width:calc(' + (100 / b.lanes).toFixed(2) + '% - 5px);--ac:var(--a-' + esc(areaOf(it.area).colour) + ')';
   // The whole title on hover: a box's height is its length, so a short one cannot always show it.
-  const tip = (it.title || 'Untitled') + ' · ' + times + (it.place ? ' · ' + it.place : '') + (clash ? ' · clashes with ' + clash : '');
+  const tip = (it.maybe ? 'Maybe: ' : '') + (it.title || 'Untitled') + ' · ' + times + (it.place ? ' · ' + it.place : '') + (clash ? ' · clashes with ' + clash : '');
   return '<div class="' + cls.join(' ') + '" style="' + pos + '" data-act="open" data-id="' + esc(b.id) + '"' + (it.done ? '' : ' data-drag="box"') + ' data-s="' + b.start + '" data-e="' + b.end + '" role="button" tabindex="0" title="' + esc(tip) + '">'
-    + (b.kind === 'task' ? tickHTML(it) : '') + '<b>' + (it.important ? '<span class="imp" role="img" aria-label="Important">★</span>' : '') + (esc(it.title) || 'Untitled') + '</b><span class="when tn">' + times + '</span>'
+    + (b.kind === 'task' ? tickHTML(it) : '') + (it.maybe ? '<i class="olab">maybe</i>' : '') + '<b>' + (it.important ? '<span class="imp" role="img" aria-label="Important">★</span>' : '') + (esc(it.title) || 'Untitled') + '</b><span class="when tn">' + times + '</span>'
     + (it.place && len >= 90 ? '<span class="where"> · ' + esc(it.place) + '</span>' : '') + (it.done ? '' : '<i class="grip" aria-hidden="true"></i>') + '</div>';
 }
 function macWeek(){
-  const n = nowL(), w = C.weekGrid(S(), n, UI.week);
+  const n = nowL(), w = C.weekGrid(S(), n, UI.week, MO());
   const dueChip = x => { const t = x.task; return '<button class="chip' + (x.level === 'done' ? ' is-done' : ' u-' + x.level) + '" data-act="open" data-id="' + esc(t.id) + '">' + (esc(t.title) || 'Untitled')
     + (x.level === 'past' ? ' · missed' : t.due.time != null ? ' <span class="tn">' + C.fmtTime(t.due.time) + '</span>' : '') + '</button>'; };
   const row = (lab, cell) => '<div class="wrow"><span class="wlab">' + lab + '</span>' + w.days.map(d => '<div class="wcell">' + cell(d) + '</div>').join('') + '</div>';
   let h = '<div class="mweek"><div class="wmain"><div class="listhead"><div><h1 class="h1">' + esc(w.title) + '</h1><div class="h1sub">' + esc(w.range + (w.termName ? ' · ' + w.termName : '')) + '</div></div><span class="sp"></span>'
     + '<div class="navrow"><button class="sbtn ghost" data-act="week" data-k="">Today</button>' + arrows(w.prev, w.next, 'week') + '</div></div>'
-    + '<div class="wscroll" id="wscroll" data-scroll="week"><div class="wtop"><div class="wrow"><span></span>' + w.days.map(d => '<div class="wdh' + (d.today ? ' today' : '') + '">' + C.WD[C.weekday(d.date)] + '<b>' + d.day + '</b></div>').join('') + '</div>'
+    + '<div class="wscroll" id="wscroll" data-scroll="week"><div class="wtop"><div class="wrow"><span></span>' + w.days.map(d => '<div class="wdh' + (d.today ? ' today' : '') + '">' + C.WD[C.weekday(d.date)] + '<b>' + d.day + '</b>' + (d.hidden ? '<span class="whid">' + plural(d.hidden, 'maybe') + ' hidden</span>' : '') + '</div>').join('') + '</div>'
     + row('Due', d => d.due.map(dueChip).join('')) + row('All day', d => d.allDay.map(e => '<button class="chip allday" data-act="open" data-id="' + esc(e.id) + '">' + (esc(e.title) || 'Untitled') + '</button>').join('')) + '</div>'
     + '<div class="wbody"><div class="gut" aria-hidden="true">';
   for (let hr = 1; hr < 24; hr++) h += '<span style="top:calc(var(--hh)*' + hr + ')">' + String(hr).padStart(2, '0') + '</span>';
@@ -927,7 +966,7 @@ function macWeek(){
 /* ----- the Mac's frame: the bar across the top, and what has to be put right after each redraw ----- */
 function macHeadHTML(){
   return '<div class="mtabs" id="mtabs" role="group" aria-label="Pages">' + [['week', 'Week'], ['every', 'Everything'], ['term', 'Term']].map(t => '<button data-act="tab" data-k="' + t[0] + '">' + t[1] + '</button>').join('') + '</div><span class="sp"></span>'
-    + '<input class="search" id="q" type="search" placeholder="Search" aria-label="Search" autocomplete="off" value="' + esc(UI.q) + '">'
+    + '<span id="mmaybe"></span><input class="search" id="q" type="search" placeholder="Search" aria-label="Search" autocomplete="off" value="' + esc(UI.q) + '">'
     + '<button class="msync" id="msync" data-act="settings"></button><button class="addbtn" data-act="add">+ Add<kbd>N</kbd></button><button class="icon" data-act="settings" aria-label="Settings">' + ICON.gear + '</button>';
 }
 function renderMac(){
@@ -937,6 +976,8 @@ function renderMac(){
   const status = C.syncStatus(App.sync, Date.now(), Sync.env());
   $('msync').innerHTML = '<i></i><span>' + esc(status) + '</span>'; $('msync').className = 'msync' + (/^Synced/.test(status) ? ' ok' : ''); $('msync').title = status; $('msync').setAttribute('aria-label', status);
   if (document.activeElement !== $('q') && $('q').value !== UI.q) $('q').value = UI.q;
+  const mb = $('mmaybe').firstChild;
+  if (!mb || mb.getAttribute('aria-pressed') !== String(UI.hideMaybes)) $('mmaybe').innerHTML = maybeBtn();
   const notes = noticesHTML();
   $('body').innerHTML = (notes ? '<div class="mnotes">' + notes + '</div>' : '') + '<div class="mpage">' + (UI.mtab === 'week' ? macWeek() : UI.mtab === 'term' ? macTerm() : macEvery()) + '</div>';
   $('tabs').innerHTML = '';
@@ -971,13 +1012,13 @@ function headHTML(){
   if (UI.tab === 'every') {
     return '<div class="titlerow"><h1 class="ptitle">Everything</h1>' + gear + '</div><div class="psub">' + esc(label(n.date)) + '</div>'
       + '<div class="controls"><div class="seg" role="group" aria-label="Group the list by"><button data-act="lens" data-k="date" aria-pressed="' + (UI.lens === 'date') + '">Date</button><button data-act="lens" data-k="area" aria-pressed="' + (UI.lens === 'area') + '">Area</button></div>'
-      + '<input class="search" id="q" type="search" placeholder="Search" aria-label="Search" autocomplete="off" value="' + esc(UI.q) + '"></div>';
+      + '<input class="search" id="q" type="search" placeholder="Search" aria-label="Search" autocomplete="off" value="' + esc(UI.q) + '">' + maybeBtn() + '</div>';
   }
   const g = C.termGrid(S(), n, UI.period), per = g.period;
   return '<div class="titlerow"><h1 class="ptitle">' + esc(per.name) + '</h1><button class="icon" data-act="period" data-k="' + esc(g.prev || '') + '" aria-label="Earlier"' + (g.prev ? '' : ' disabled') + '>' + ICON.prev + '</button>'
     + '<button class="icon" data-act="period" data-k="' + esc(g.next || '') + '" aria-label="Later"' + (g.next ? '' : ' disabled') + '>' + ICON.next + '</button>' + gear + '</div>'
     + '<div class="psub">' + (per.kind === 'term' ? '0th–9th week · tap a day, or a week’s number' : esc(label(per.first, { weekday: false, week: false }) + ' to ' + label(per.last, { weekday: false, week: false })) + ' · tap a day') + '</div>'
-    + (per.id !== C.periodOf(n.date).id ? '<div class="controls"><button class="sbtn ghost" data-act="period" data-k="">Back to today</button></div>' : '');
+    + '<div class="controls">' + (per.id !== C.periodOf(n.date).id ? '<button class="sbtn ghost" data-act="period" data-k="">Back to today</button>' : '') + '<span class="sp"></span>' + maybeBtn() + '</div>';
 }
 function render(){
   if (!App.ready) return;
@@ -1022,9 +1063,11 @@ function renderSheet(){
   const sh = UI.sheet, s = S();
   if (!sh) { $('sheet').innerHTML = ''; return; }
   if (sh.kind === 'add') {
-    $('sheet').innerHTML = '<div class="scrim" data-act="close"></div><section class="sheet top" role="dialog" aria-modal="true" aria-label="Add">'
+    if (!sh.fields) sh.fields = {};
+    $('sheet').innerHTML = '<div class="scrim" data-act="close"></div><section class="sheet top" id="add-sheet" role="dialog" aria-modal="true" aria-label="Add">'
       + '<div class="addrow"><input id="add-in" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="sentences" placeholder="essay due Wed 6pm · tutorial Thu 2pm" aria-label="What to add" value="' + esc(sh.text || '') + '">'
-      + '<button class="btn go" data-act="add-go">Add</button></div><div id="add-out"></div><div class="btnrow"><button class="btn" data-act="close">Cancel</button></div></section>';
+      + '<button class="btn go" data-act="add-go">Add</button></div><div id="add-echo"></div><div id="add-fields"></div><div id="add-out"></div>'
+      + '<div class="addbtns"><button class="btn" data-act="close">Cancel</button><button class="btn" data-act="add-more">More options</button></div></section>';
     addPreview();
     const el = $('add-in'), at = sh.caret != null ? sh.caret : el.value.length; el.focus(); el.setSelectionRange(at, at);
     return;
@@ -1043,7 +1086,7 @@ function renderSheet(){
     $('ask-one').focus();
     return;
   }
-  const it = s.items[sh.id];
+  const it = sh.draft || s.items[sh.id];
   if (!it || it.deleted) { closeSheet(); return; }
   $('sheet').innerHTML = it.kind === 'task' ? taskSheet(C.settle(it, nowL().date)) : it.kind === 'event' ? eventSheet(it) : sh.orig ? occurrenceSheet(it, sh.orig) : seriesSheet(it);
   if (sh.focus && $(sh.focus)) $(sh.focus).focus();
@@ -1054,31 +1097,110 @@ function openItem(id, focus){
   else if (at > 0 && s.items[id.slice(0, at)]) openSheet({ kind: 'edit', id: id.slice(0, at), orig: id.slice(at + 1) });
 }
 
-/* ----- the add bar: it shows what it understood as he types ----- */
+/* ----- the add bar: it shows what it understood as he types, as fields he can change ----- */
+// The line is read as before. Under it, what was read is laid out as fields. A field he changes is his
+// (UI.sheet.fields): the line no longer sets it, and a small "line" button beside it hands it back.
 function readAdd(){ const n = nowL(); return C.parseAdd($('add-in').value, { today: n.date, nowMin: n.min, areas: areaList() }); }
+function readFields(){ return C.withFields(readAdd(), UI.sheet.fields, { today: nowL().date }); }
+const fieldKind = w => w.kind === 'event' ? 'event' : w.kind === 'series' ? 'series' : w.kind === 'deadlines' ? 'deadlines' : w.kind === 'deadline' ? 'deadline' : 'task';
+// Which fields each kind shows, in order. `half` takes half the row on the Mac.
+const FIELDS = {
+  event: ['date', 'start', 'end', 'place', 'area', 'maybe'],
+  task: ['date', 'start', 'end', 'area'],
+  deadline: ['date', 'start', 'area'],
+  deadlines: ['days', 'weeks', 'start', 'area'],
+  series: ['days', 'weeks', 'start', 'end', 'place', 'area', 'maybe'] };
+const FIELD_ID = { title: 'a-title', date: 'a-date', start: 'a-start', end: 'a-end', place: 'a-place', area: 'a-area', weeks: 'a-weeks', maybe: 'a-maybe', days: 'a-day0' };
+const NEED_FIELD = { title: 'title', pickday: 'date', duedate: 'date', day: 'date', timeday: 'date', start: 'start', order: 'end', days: 'days', weeks: 'weeks' };
+function fieldValue(w, k){
+  if (k === 'date') return w.date || '';
+  if (k === 'start') return clockVal(w.kind === 'planned' && w.block ? w.block.start : w.start);
+  if (k === 'end') return clockVal(w.kind === 'planned' && w.block ? w.block.end : w.end);
+  if (k === 'weeks') return w.weeks ? C.weeksText(w.weeks) : '';
+  return w[k] == null ? '' : w[k];
+}
+function addFieldsHTML(w){
+  const fk = fieldKind(w), own = k => Object.prototype.hasOwnProperty.call(UI.sheet.fields, k);
+  const lab = (k, text) => '<span>' + text + (own(k) ? '<span class="own">· yours</span><button class="unpin" data-act="add-unpin" data-k="' + k + '" aria-label="Let the line set ' + esc(text.toLowerCase()) + ' again">reset</button>' : '') + '</span>';
+  const box = (k, text, inner, cls, hint) => '<label class="f' + (cls ? ' ' + cls : '') + '">' + lab(k, text) + inner + (hint ? '<small id="' + FIELD_ID[k] + '-h">' + hint + '</small>' : '') + '</label>';
+  const kinds = [['event', 'Event'], ['task', 'Task'], ['deadline', 'Deadline'], ['series', 'Repeat']];
+  const on = fk === 'deadlines' ? 'deadline' : fk;
+  let h = '<div class="seg kindseg" role="group" aria-label="What it is">' + kinds.map(k => '<button data-act="add-kind" data-k="' + k[0] + '" aria-pressed="' + (on === k[0]) + '">' + k[1] + '</button>').join('') + '</div>';
+  h += '<div class="afields">' + box('title', 'Title', '<input id="a-title" type="text" autocomplete="off" data-af="title" value="' + esc(w.title) + '">', 'wide');
+  const term = C.termById(w.term);
+  for (const k of FIELDS[fk]) {
+    if (k === 'date') h += box('date', fk === 'deadline' ? 'Due on' : 'Day', '<input id="a-date" type="date" data-af="date" value="' + esc(fieldValue(w, 'date')) + '">', 'half', esc(w.date ? label(w.date) : fk === 'task' ? 'No day: it goes to Undated' : 'No day yet'));
+    else if (k === 'start') h += box('start', fk === 'deadline' || fk === 'deadlines' ? 'Due at' : 'From', '<input id="a-start" type="time" data-af="start" value="' + esc(fieldValue(w, 'start')) + '">');
+    else if (k === 'end') h += box('end', 'To', '<input id="a-end" type="time" data-af="end" value="' + esc(fieldValue(w, 'end')) + '">');
+    else if (k === 'place') h += box('place', 'Place', '<input id="a-place" type="text" autocomplete="off" data-af="place" value="' + esc(w.place) + '">', 'half');
+    else if (k === 'area') h += box('area', 'Area', '<select id="a-area" data-af="area">' + areaList().map(a => '<option value="' + esc(a.id) + '"' + (a.id === w.area ? ' selected' : '') + '>' + esc(a.name) + '</option>').join('') + '</select>', fk === 'task' || fk === 'deadline' ? 'half' : '');
+    else if (k === 'weeks') h += box('weeks', 'Weeks', '<input id="a-weeks" type="text" autocomplete="off" inputmode="text" placeholder="1-8" data-af="weeks" value="' + esc(fieldValue(w, 'weeks')) + '">', '', esc(term ? term.name + ' ' + term.year + (w.count ? ' · ' + plural(w.count, 'time') : '') : ''));
+    else if (k === 'days') h += '<div class="f wide">' + lab('days', 'Days') + '<div class="dayset">' + C.WD.map((d, i) => '<label><input type="checkbox" id="a-day' + i + '" data-af="days"' + (w.days.indexOf(i) >= 0 ? ' checked' : '') + ' aria-label="' + C.WDL[i] + '">' + d.slice(0, 2) + '</label>').join('') + '</div></div>';
+    else if (k === 'maybe') h += '<div class="wide">' + chk('a-maybe', w.maybe, 'Maybe', 'Drawn faint, never a clash, never counted as busy.').replace('<input id="a-maybe"', '<input id="a-maybe" data-af="maybe"') + '</div>';
+  }
+  return h + '</div>';
+}
+// Fields he has not made his own follow the line. A field being typed in is never redrawn under him.
 function addPreview(){
-  const text = $('add-in').value, n = nowL();
-  if (!text.trim()) { $('add-out').innerHTML = '<div class="hint">Type what it is and when. Words read as a day, a time or a mark are highlighted; tap one to keep it in the title instead.</div>'; return; }
-  const r = readAdd(), d = C.describe(r, { today: n.date, areas: areaList() });
+  const sh = UI.sheet; if (!sh || sh.kind !== 'add') return;
+  const text = $('add-in').value, n = nowL(), r = readAdd(), w = C.withFields(r, sh.fields, { today: n.date });
   let echo = '', p = 0;
   for (const k of r.marks) { echo += esc(text.slice(p, k.i)) + '<mark class="k-' + k.type + '" data-act="unread" data-i="' + k.i + '" data-j="' + k.j + '" role="button" tabindex="0" aria-label="Keep “' + esc(text.slice(k.i, k.j)) + '” in the title">' + esc(text.slice(k.i, k.j)) + '</mark>'; p = k.j; }
   echo += esc(text.slice(p));
-  let h = '<div class="echo">' + echo + '</div><div class="pchips">' + d.chips.map(c => '<span class="pchip"><small>' + esc(c[0]) + '</small><b>' + esc(c[1]) + '</b></span>').join('') + '</div>';
-  if (d.needs.length) h += d.needs.map(x => '<div class="error">' + esc(x) + '</div>').join('');
+  $('add-echo').innerHTML = text.trim() ? '<div class="echo">' + echo + '</div>' : '<div class="hint">Type what it is and when, or fill in the boxes. Words read as a day, a time or a mark are highlighted; tap one to keep it in the title instead.</div>';
+  // Redrawn whole when the kind changes (the boxes differ); otherwise only the values he has not set are put right.
+  const box = $('add-fields'), key = fieldKind(w) + '|' + Object.keys(sh.fields).sort().join(',');
+  if (box.dataset.key !== key) {
+    const focus = document.activeElement && box.contains(document.activeElement) ? document.activeElement.id : null;
+    box.innerHTML = addFieldsHTML(w); box.dataset.key = key;
+    if (focus && $(focus)) $(focus).focus();
+  } else {
+    for (const k of Object.keys(FIELD_ID)) {
+      if (Object.prototype.hasOwnProperty.call(sh.fields, k)) continue;
+      if (k === 'days') { C.WD.forEach((d, i) => { const el = $('a-day' + i); if (el) el.checked = w.days.indexOf(i) >= 0; }); continue; }
+      const el = $(FIELD_ID[k]); if (!el || el === document.activeElement) continue;
+      if (el.type === 'checkbox') el.checked = !!w[k]; else { const v = String(fieldValue(w, k)); if (el.value !== v) el.value = v; }
+    }
+    if ($('a-date-h')) $('a-date-h').textContent = w.date ? label(w.date) : fieldKind(w) === 'task' ? 'No day: it goes to Undated' : 'No day yet';
+    const term = C.termById(w.term); if ($('a-weeks-h')) $('a-weeks-h').textContent = term ? term.name + ' ' + term.year + (w.count ? ' · ' + plural(w.count, 'time') : '') : '';
+  }
+  const d = C.describe(w, { today: n.date, areas: areaList() });
+  let h = '';
+  if (!text.trim() && !Object.keys(sh.fields).length) h = '';
+  else if (d.needs.length) h = d.needs.map(x => '<div class="error">' + esc(x) + '</div>').join('');
   else {
-    h += '<div class="will">' + esc(d.will[0]) + '<b>' + esc(d.will[1]) + '</b>' + esc(d.will[2]) + '</div>';
-    const clashes = C.clashesWith(S(), n, C.buildItems(r, { now: 0, id: () => 'preview' }));
+    h = '<div class="will">' + esc(d.will[0]) + '<b>' + esc(d.will[1]) + '</b>' + esc(d.will[2]) + '</div>';
+    const clashes = C.clashesWith(S(), n, C.buildItems(w, { now: 0, id: () => 'preview' }));
     if (clashes.length) h += '<div class="will clash">Clashes with ' + esc(clashes[0].with) + ' on ' + esc(label(clashes[0].date, { week: false })) + (clashes.length > 1 ? ', and ' + plural(clashes.length - 1, 'other time') : '') + '.</div>';
   }
   $('add-out').innerHTML = h;
 }
+// A field he has changed: read it, and from now on it is his.
+function addField(el){
+  const k = el.dataset.af, f = UI.sheet.fields, v = el.value;
+  if (k === 'title' || k === 'place' || k === 'area') f[k] = v;
+  else if (k === 'date') f.date = C.isDate(v) ? v : null;
+  else if (k === 'start' || k === 'end') f[k] = v ? C.readClock(v) : null;
+  else if (k === 'weeks') f.weeks = C.readWeeks(v) || [];
+  else if (k === 'maybe') f.maybe = el.checked;
+  else if (k === 'days') f.days = [0, 1, 2, 3, 4, 5, 6].filter(i => $('a-day' + i) && $('a-day' + i).checked);
+  addPreview();
+}
+function addNeedFocus(w){ const k = NEED_FIELD[w.needs[0]], el = k && $(FIELD_ID[k]); (el || $('add-in')).focus(); }
 function addGo(){
-  const r = readAdd(), items = C.buildItems(r, { now: Date.now() });
-  if (!items.length) { addPreview(); $('add-in').focus(); return; }
+  const w = readFields(), items = C.buildItems(w, { now: Date.now() });
+  if (!items.length) { addPreview(); addNeedFocus(w); return; }
   change(s => putItems(s, items));
   closeSheet();
   const what = items.length > 1 ? plural(items.length, 'deadline') : items[0].title;
   toast('Added: ' + what, () => change(s => putItems(s, items.map(i => C.remove(S().items[i.id] || i, Date.now())))));
+}
+// More options: the full form, with everything read so far, before anything is saved.
+function addMore(){
+  const w = readFields(), items = C.buildItems(w, { now: Date.now() });
+  if (!items.length) { addPreview(); addNeedFocus(w); return; }
+  if (items.length > 1) { addGo(); return; }                 // a repeating deadline is several tasks: there is no one form for it
+  openSheet({ kind: 'edit', id: items[0].id, draft: items[0] });
 }
 
 /* ----- editing a task ----- */
@@ -1093,12 +1215,17 @@ function taskSheet(t){
   b += chk('f-imp', t.important, 'Important') + chk('f-someday', t.someday, 'Someday', 'No day and no deadline. Kept in its own list.');
   b += fld('Note', '<textarea id="f-notes">' + esc(t.notes) + '</textarea>');
   if (t.done) b += '<div class="note">Ticked off ' + esc(label(C.londonDate(t.done))) + '.</div>';
-  b += ERRBOX + '<div class="btnrow"><button class="btn go wide" data-act="save-task" data-id="' + id + '">Save</button><button class="btn" data-act="tick" data-id="' + id + '">' + (t.done ? 'Untick' : 'Tick off') + '</button>'
-    + '<button class="btn danger" data-act="delete" data-id="' + id + '">Delete</button>' + (group > 1 ? '<button class="btn danger" data-act="delete-group" data-id="' + id + '">Delete all ' + group + ' of these</button>' : '') + '</div>';
+  b += ERRBOX + saveRow('data-act="save-task"', t.id, '<button class="btn" data-act="tick" data-id="' + id + '">' + (t.done ? 'Untick' : 'Tick off') + '</button>'
+    + '<button class="btn danger" data-act="delete" data-id="' + id + '">Delete</button>' + (group > 1 ? '<button class="btn danger" data-act="delete-group" data-id="' + id + '">Delete all ' + group + ' of these</button>' : ''));
   return frame(t.due ? 'Deadline' : 'Task', b);
 }
+const MAYBE_WORDS = 'Something you might go to. Drawn faint, never a clash, never counted as busy. Untick it once you decide to go.';
+const draftOf = id => UI.sheet && UI.sheet.draft && UI.sheet.draft.id === id ? UI.sheet.draft : null;
+const curItem = id => draftOf(id) || S().items[id];
+// The buttons under an editor. A draft has not been added yet: its button adds it, and there is nothing to delete.
+const saveRow = (act, id, rest) => '<div class="btnrow"><button class="btn go wide" ' + act + ' data-id="' + esc(id) + '">' + (draftOf(id) ? 'Add' : 'Save') + '</button>' + (draftOf(id) ? '<button class="btn" data-act="close">Cancel</button>' : rest) + '</div>';
 function saveTask(id){
-  const cur = S().items[id]; if (!cur) return closeSheet();
+  const cur = curItem(id); if (!cur) return closeSheet();
   const t = C.settle(cur, nowL().date), title = val('f-title').trim(), someday = val('f-someday');
   if (!title) return fail('Give it a title.');
   const plan = val('f-plan') || null, dd = val('f-due') || null, dt = val('f-duet'), est = C.readDuration(val('f-est')), bs = val('f-bs'), be = val('f-be');
@@ -1135,16 +1262,17 @@ function eventSheet(e){
   let b = fld('Title', inp('f-title', 'text', e.title, 'autocomplete="off"')) + whenFields(e.date, e.start, e.end, e.allDay) + chk('f-allday', e.allDay, 'All day')
     + fld('Place', inp('f-place', 'text', e.place, 'autocomplete="off"')) + fld('Area', areaSelect(e.area))
     + chk('f-routine', e.routine, 'Part of the weekly timetable', 'Shows in the list for today and tomorrow only, and gets no dot on the term grid.')
+    + chk('f-maybe', e.maybe, 'Maybe', MAYBE_WORDS)
     + fld('Note', '<textarea id="f-notes">' + esc(e.notes) + '</textarea>');
-  b += ERRBOX + '<div class="btnrow"><button class="btn go wide" data-act="save-event" data-id="' + esc(e.id) + '">Save</button><button class="btn danger" data-act="delete" data-id="' + esc(e.id) + '">Delete</button></div>';
+  b += ERRBOX + saveRow('data-act="save-event"', e.id, '<button class="btn danger" data-act="delete" data-id="' + esc(e.id) + '">Delete</button>');
   return frame('Event', b);
 }
 function saveEvent(id){
-  const cur = S().items[id]; if (!cur) return closeSheet();
+  const cur = curItem(id); if (!cur) return closeSheet();
   const title = val('f-title').trim(), allDay = val('f-allday');
   if (!title) return fail('Give it a title.');
   const w = readWhen(allDay); if (!w) return false;
-  change(s => putItems(s, [Object.assign({}, cur, w, { title, allDay, place: val('f-place').trim(), area: val('f-area'), routine: val('f-routine'), notes: val('f-notes'), updatedAt: Date.now() })]));
+  change(s => putItems(s, [C.withMaybe(Object.assign({}, cur, w, { title, allDay, place: val('f-place').trim(), area: val('f-area'), routine: val('f-routine'), notes: val('f-notes'), updatedAt: Date.now() }), val('f-maybe'))]));
   closeSheet();
 }
 
@@ -1196,20 +1324,21 @@ function seriesSheet(s){
   b += '<div class="pair">' + fld('Starts', inp('f-start', 'time', clockVal(s.start))) + fld('Ends', inp('f-end', 'time', clockVal(s.end))) + '</div>';
   b += fld('Place', inp('f-place', 'text', s.place, 'autocomplete="off"')) + fld('Area', areaSelect(s.area))
     + chk('f-routine', s.routine, 'Part of the weekly timetable', 'Shows in the list for today and tomorrow only, and gets no dot on the term grid.')
+    + chk('f-maybe', s.maybe, 'Maybe', MAYBE_WORDS)
     + fld('Note', '<textarea id="f-notes">' + esc(s.notes) + '</textarea>');
   const changed = Object.keys(s.exceptions || {}).length;
   if (changed) b += '<div class="note">' + plural(changed, 'time') + ' of it ' + (changed === 1 ? 'has' : 'have') + ' been changed or cancelled on its own. Those stay as they are where the day still exists.</div>';
-  b += ERRBOX + '<div class="btnrow"><button class="btn go wide" data-act="save-series" data-id="' + id + '">Save</button><button class="btn danger" data-act="delete" data-id="' + id + '">Delete every time</button></div>';
+  b += ERRBOX + saveRow('data-act="save-series"', s.id, '<button class="btn danger" data-act="delete" data-id="' + id + '">Delete every time</button>');
   return frame('Repeat: ' + plural(C.seriesOccurrences(s).length, 'time'), b);
 }
 function saveSeries(id){
-  const cur = S().items[id]; if (!cur) return closeSheet();
+  const cur = curItem(id); if (!cur) return closeSheet();
   const title = val('f-title').trim(), days = [0, 1, 2, 3, 4, 5, 6].filter(i => val('f-day' + i)), weeks = C.readWeeks(val('f-weeks')), a = C.readClock(val('f-start')), z = C.readClock(val('f-end'));
   if (!title) return fail('Give it a title.');
   if (!days.length) return fail('Choose at least one day.');
   if (!weeks) return fail('The weeks could not be read. Try 1-8, or 1, 2, 4-8.');
   if (a === null || z === null || z <= a) return fail('Give a start time and a later end time.');
-  const next = Object.assign({}, cur, { title, days, weeks, term: val('f-term'), start: a, end: z, place: val('f-place').trim(), area: val('f-area'), routine: val('f-routine'), notes: val('f-notes'), updatedAt: Date.now() });
+  const next = C.withMaybe(Object.assign({}, cur, { title, days, weeks, term: val('f-term'), start: a, end: z, place: val('f-place').trim(), area: val('f-area'), routine: val('f-routine'), notes: val('f-notes'), updatedAt: Date.now() }), val('f-maybe'));
   // An exception only makes sense for a day the repeat still falls on.
   const still = new Set(C.seriesDates(next)), ex = {};
   for (const d of Object.keys(cur.exceptions || {})) if (still.has(d)) ex[d] = cur.exceptions[d];
@@ -1278,6 +1407,7 @@ function act(b, e){
   const a = b.dataset.act, id = b.dataset.id, it = id && S().items[id], t = Date.now(), today = nowL().date;
   if (a === 'tab') setTab(b.dataset.k);
   else if (a === 'lens') { UI.lens = b.dataset.k; saveUI(); render(); }
+  else if (a === 'maybes') { UI.hideMaybes = !UI.hideMaybes; saveUI(); render(); }
   else if (a === 'toggle') { UI[b.dataset.k] = !UI[b.dataset.k]; render(); }
   else if (a === 'period') { UI.period = b.dataset.k || null; UI.selDay = null; UI.selWeek = null; UI.scroll['m:term:term'] = 0; render(); if (!MAC) window.scrollTo(0, 0); }
   // The Mac's week page: the arrows carry the Sunday to go to; Today carries none.
@@ -1329,6 +1459,9 @@ function act(b, e){
     else { $('f-someday').checked = false; $('f-plan').value = q === 'Today' ? today : q === 'Tomorrow' ? C.addDays(today, 1) : C.addDays(sun, 7); $('h-plan').textContent = dateHint($('f-plan').value); }
   }
   else if (a === 'add-go') addGo();
+  else if (a === 'add-more') addMore();
+  else if (a === 'add-kind') { UI.sheet.fields.kind = b.dataset.k; addPreview(); const p = document.querySelector('[data-act="add-kind"][data-k="' + b.dataset.k + '"]'); if (p) p.focus(); }
+  else if (a === 'add-unpin') { e.preventDefault(); delete UI.sheet.fields[b.dataset.k]; addPreview(); $('add-in').focus(); }
   else if (a === 'unread') {
     // Un-reading a word is the same as putting quotation marks round it, done for him.
     const el = $('add-in'), i = +b.dataset.i, j = +b.dataset.j;
@@ -1511,7 +1644,8 @@ document.addEventListener('keydown', e => {
     else if (UI.cur || UI.pick) { UI.cur = null; UI.pick = null; render(); }
     return;
   }
-  if (e.key === 'Enter' && el.id === 'add-in') { e.preventDefault(); addGo(); return; }
+  // Enter adds from the line or from any of the add bar's boxes.
+  if (e.key === 'Enter' && (el.id === 'add-in' || (el.dataset && el.dataset.af && el.tagName === 'INPUT' && el.type !== 'checkbox'))) { e.preventDefault(); if (el.dataset.af) addField(el); addGo(); return; }
   if ((e.key === 'Enter' || e.key === ' ') && el.matches && el.matches('[role="button"][data-act]')) { e.preventDefault(); act(el, e); return; }
   // The shortcuts. Not while typing, not while a sheet is open, and not with a key held that belongs to the browser.
   if (UI.sheet || e.metaKey || e.ctrlKey || e.altKey || (el.matches && el.matches('input, textarea, select'))) return;
@@ -1540,6 +1674,7 @@ document.addEventListener('input', e => {
     if (MAC) { if (UI.mtab !== 'every') { UI.mtab = 'every'; saveUI(); } UI.scroll['m:every:list'] = 0; render(); } else $('body').innerHTML = everyBody();
   }
   else if (el.id === 'add-in') addPreview();
+  else if (el.dataset && el.dataset.af && el.type !== 'checkbox' && el.tagName !== 'SELECT') addField(el);
 });
 // Hovering a day on the Mac's term page lists everything on it.
 document.addEventListener('mouseover', e => {
@@ -1564,6 +1699,7 @@ document.addEventListener('change', e => {
     }, () => { const box = $('b-error'); if (box) box.textContent = 'That file could not be read.'; });
     return;
   }
+  if (el.dataset.af && UI.sheet && UI.sheet.kind === 'add') { addField(el); return; }
   if (el.dataset.hint && $(el.dataset.hint)) $(el.dataset.hint).textContent = el.value ? dateHint(el.value) : (el.id === 'f-due' ? 'No deadline' : 'No day yet');
   if (el.dataset.set === 'motto') change(s => C.withSetting(s, 'motto', el.value.trim(), t));
   else if (el.dataset.set === 'weekly') { const h = parseFloat(el.value); if (h >= 1 && h <= 100) change(s => C.withSetting(s, 'weeklyTargetMin', Math.round(h * 60), t)); else el.value = Math.round((S().settings.weeklyTargetMin || 0) / 6) / 10; }
